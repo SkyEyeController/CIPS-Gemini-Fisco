@@ -3,13 +3,25 @@ package utils
 import (
 	"crypto/sha256"
 	"math/big"
-	
+	"github.com/FISCO-BCOS/go-sdk/v3/client"
+	"github.com/ethereum/go-ethereum/common"
 )
 
-type FabricClient struct {
-	//TODO：这里实现你的Fabric的客户端对象结构，用于连接链、部署以及调用合约
+// FiscoClient FISCO BCOS客户端结构，用于连接链、部署以及调用合约
+type FiscoClient struct {
+	// 底层的FISCO BCOS客户端实例
+	Client *client.Client
+	// 连接配置信息
+	Config *client.Config
+	// 当前链ID
+	ChainId *big.Int
+	// 私钥（十六进制字符串）
+	PrivateKeyHex string
+	// 连接状态
+	Connected bool
 }
 
+// CrossChainMessage 跨链消息包结构
 type CrossChainMessage struct {
 	//TODO：在这里实现你的跨链消息包结构，以下是一个参考
 
@@ -41,18 +53,23 @@ type CrossChainMessage struct {
 	Ack      bool
 }
 
+// Address 统一的合约和用户地址结构
 type Address struct {
-	//TODO：在这里实现你需要的合约以及用户地址结构，如果两者不统一，则分成两个类：UserAddress以及ContractAddress
+	// 底层以太坊地址结构（FISCO BCOS兼容以太坊地址格式）
+	Address common.Address
 }
 
 func StringToAddress(addr string) *Address {
-	//TODO：字符串转地址
-	return nil
+	// 将十六进制字符串转换为common.Address
+	ethAddress := common.HexToAddress(addr)
+	return &Address{
+		Address: ethAddress,
+	}
 }
 
 func AddressToBase58(address *Address) string {
-	//TODO：地址转字符串'
-	return ""
+	// 将地址转换为十六进制字符串
+	return address.Address.Hex()
 }
 
 // 封装验证层接收和返回的内容
