@@ -1,0 +1,29 @@
+chain:
+  chain_id: 12
+  hostname: http://127.0.0.1:8000
+  sender_address: hHu9yEnSNpHKyAGW7S4wBsaGDaNL74kbw6xTKDStEJzzgo9sv
+  private_key: 06672cf262614f87939e5fbe0c543b728e52b11c5cdb2324f3a3d0cd05607f4c
+  transport_addr: 24Dt6siyNamhSTPMxRZZRSh2dhpdwCDp8c4gexC6xyA9UXFFGs
+  aggregator_addr: 2XCGUaZWeCv8MhVFCw223SpwgEkmC8pAZtQQrTkA29CF6MPM3d
+
+relayer:
+  server: http://127.0.0.1:5000
+  enable_relaychain: false
+  
+  verifications:
+    - id: 1
+      args: ""
+    - id: 2
+      args: ""
+
+  targets:
+    - chain_id: 12
+      url: http://127.0.0.1:5000
+    - chain_id: 14
+      url: http://127.0.0.1:5001
+
+test:
+  dst_chain_id: 14
+  src_app_id: 1
+  dst_app_id: 1
+  app_args: abcdeasd
