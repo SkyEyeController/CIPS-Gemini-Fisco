@@ -33,7 +33,7 @@ func readYAML() config.YamlConfig {
 func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "crossFab",
-		Short: "Cross-Chain Relayer for Fabric",
+		Short: "Cross-Chain Relayer for Fisco",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("Helper: crossFab -h")
 		},
