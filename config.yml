@@ -1,15 +1,14 @@
 chain:
-  chain_id: 12
-  hostname: http://127.0.0.1:8000
+  chain_id: 14
+  hostname: http://127.0.0.1:8545
   sender_address: hHu9yEnSNpHKyAGW7S4wBsaGDaNL74kbw6xTKDStEJzzgo9sv
-  private_key: 06672cf262614f87939e5fbe0c543b728e52b11c5cdb2324f3a3d0cd05607f4c
-  transport_addr: 24Dt6siyNamhSTPMxRZZRSh2dhpdwCDp8c4gexC6xyA9UXFFGs
-  aggregator_addr: 2XCGUaZWeCv8MhVFCw223SpwgEkmC8pAZtQQrTkA29CF6MPM3d
+  private_key: 145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58
+  transport_addr: 0x725bFa66df4c3688f3057726077B6A40D56aba8D
+  aggregator_addr: 0x3D76d23E1d26f3b3028c7542cA71A2830bB40523
 
 relayer:
-  server: http://127.0.0.1:5000
-  enable_relaychain: false
-  
+  server: http://127.0.0.1:6000
+  enable_relaychain: true
   verifications:
     - id: 1
       args: ""
@@ -20,10 +19,13 @@ relayer:
     - chain_id: 12
       url: http://127.0.0.1:5000
     - chain_id: 14
-      url: http://127.0.0.1:5001
+      url: http://127.0.0.1:6000
+    - chain_id: 30000
+      url: http://127.0.0.1:8300
 
 test:
-  dst_chain_id: 14
+  dst_chain_id: 12
   src_app_id: 1
   dst_app_id: 1
   app_args: abcdeasd
+

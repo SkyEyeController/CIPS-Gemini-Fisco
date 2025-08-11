@@ -10,9 +10,11 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -115,53 +117,83 @@ func (c *ChainSdk) ListenEvent(eventListenChan chan map[string][]byte) {
 		log.Printf("Failed to get latest block number: %v", err)
 		latestBlockNumber = 0 // 如果获取失败，从0开始
 	}
+	fmt.Printf("Latest block number: %d\n", latestBlockNumber)
+	fmt.Printf("Listening for events on contract: %s\n", c.eventListenAddress.Address.Hex())
+
+	// 计算正确的CmHash事件签名
+	eventSignature := "CmHash(bytes32,uint256)"
+	expectedTopic := common.BytesToHash(crypto.Keccak256([]byte(eventSignature))).Hex()
+	fmt.Printf("Expected CmHash event topic: %s\n", expectedTopic)
 
 	eventLogParams := types.EventLogParams{
-		FromBlock: latestBlockNumber,                            // 从最新区块开始监听
-		ToBlock:   -1,                                           // 到最新区块 (-1 表示 latest)
-		Addresses: []string{c.eventListenAddress.Address.Hex()}, // 监听的合约地址
+		FromBlock: latestBlockNumber + 1,                                         // 从最近区块开始监听，确保捕获历史事件
+		ToBlock:   -1,                                                            // 到最新区块 (-1 表示 latest)
+		Addresses: []string{strings.ToLower(c.eventListenAddress.Address.Hex())}, // 监听的合约地址
 		Topics: []string{
-			"0x" + hex.EncodeToString(crypto.Keccak256([]byte("CmHash(bytes32,uint256)"))), // CmHash事件签名
+			expectedTopic, // CmHash事件签名
 		},
 	}
 
-	log.Println("Started listening for CmHash events...")
+	log.Printf("Starting event subscription from block %d to latest", latestBlockNumber+1)
 
 	// 使用SubscribeEventLogs函数订阅事件
 	taskId, err := client.SubscribeEventLogs(context.Background(), eventLogParams, func(status int, logs []types.Log) {
+		log.Printf("📥 Event callback triggered: status=%d, logs=%d", status, len(logs))
+
 		if status != 0 {
 			log.Printf("Event subscription error, status: %d", status)
 			return
 		}
 
 		// 处理每个事件日志
-		for _, eventLog := range logs {
+		for i, eventLog := range logs {
+			log.Printf("Processing event log %d:", i)
+			log.Printf("  Contract: %s", eventLog.Address)
+			log.Printf("  Topics count: %d", len(eventLog.Topics))
+
+			// 输出所有topics用于调试
+			for j, topic := range eventLog.Topics {
+				log.Printf("    Topic[%d]: %s", j, topic.Hex())
+			}
+			log.Printf("  Data: %s", eventLog.Data)
+
 			// 解析CmHash事件
 			if len(eventLog.Topics) >= 3 {
-				// Topics[0] 是事件签名
-				// Topics[1] 是 hash (bytes32, indexed)
-				// Topics[2] 是 phase (uint256, indexed)
+				// 检查事件签名是否匹配
+				if eventLog.Topics[0].Hex() == expectedTopic {
+					log.Printf("✅ Found matching CmHash event!")
 
-				var re_eventHash [32]byte
-				copy(re_eventHash[:], eventLog.Topics[1].Bytes())
+					// Topics[0] 是事件签名
+					// Topics[1] 是 hash (bytes32, indexed)
+					// Topics[2] 是 phase (uint256, indexed)
 
-				// 解析phase
-				phase := new(big.Int)
-				phase.SetBytes(eventLog.Topics[2].Bytes())
-				re_eventPhase := phase
+					var re_eventHash [32]byte
+					copy(re_eventHash[:], eventLog.Topics[1].Bytes())
 
-				// 构造返回字典
-				returnDict := make(map[string][]byte)
-				returnDict["hash"] = re_eventHash[:]
-				returnDict["phase"] = re_eventPhase.Bytes()
+					// 解析phase
+					phase := new(big.Int)
+					phase.SetBytes(eventLog.Topics[2].Bytes())
 
-				// 发送到通道
-				select {
-				case c.eventListenChan <- returnDict:
-					log.Printf("CmHash event detected: hash=%x, phase=%d", re_eventHash, phase.Int64())
-				default:
-					log.Printf("Event channel full, skipping event")
+					log.Printf("Parsed CmHash: hash=%x, phase=%d", re_eventHash, phase.Int64())
+
+					// 构造返回字典
+					returnDict := make(map[string][]byte)
+					returnDict["hash"] = re_eventHash[:]
+					returnDict["phase"] = phase.Bytes()
+
+					// 发送到通道
+					select {
+					case c.eventListenChan <- returnDict:
+						log.Printf("🎯 CmHash event sent to channel: hash=%x, phase=%d", re_eventHash, phase.Int64())
+					default:
+						log.Printf("⚠️ Event channel full, skipping event")
+					}
+				} else {
+					log.Printf("ℹ️ Found event with different signature: %s (expected: %s)",
+						eventLog.Topics[0].Hex(), expectedTopic)
 				}
+			} else {
+				log.Printf("⚠️ Event log doesn't have enough topics (expected >= 3, got %d)", len(eventLog.Topics))
 			}
 		}
 	})
