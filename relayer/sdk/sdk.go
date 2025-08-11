@@ -6,11 +6,11 @@ import (
 	"crossFab/contracts/layer_transport/eventlisten"
 	"crossFab/utils"
 	"encoding/hex"
-	"fmt"
-	"log"
 	"math/big"
 	"os"
 	"strings"
+
+	clog "github.com/kpango/glg"
 
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
@@ -46,7 +46,7 @@ func NewChainSdk(wsURL string, pk string, eventListenAddress utils.Address, aggr
 
 	privateKey, err := hex.DecodeString(pk) // 传入私钥
 	if err != nil {
-		log.Fatalf("Failed to decode private key: %v", err)
+		clog.Fatalf("Failed to decode private key: %v", err)
 		os.Exit(1)
 	}
 
@@ -67,9 +67,9 @@ func NewChainSdk(wsURL string, pk string, eventListenAddress utils.Address, aggr
 	// 🌐 建立与FISCO BCOS节点的连接
 	fiscoClient, err := client.DialContext(context.Background(), config)
 	if err != nil {
-		log.Fatal("Failed to connect:", err) // 连接失败则退出程序
+		clog.Fatal("Failed to connect:", err) // 连接失败则退出程序
 	}
-	fmt.Println("Successfully connected to FISCO BCOS") // 连接成功提示
+	clog.Println("Successfully connected to FISCO BCOS") // 连接成功提示
 
 	// 创建包装的FiscoClient
 	chainClient := &utils.FiscoClient{
@@ -114,16 +114,16 @@ func (c *ChainSdk) ListenEvent(eventListenChan chan map[string][]byte) {
 	// 获取当前最新区块号
 	latestBlockNumber, err := client.GetBlockNumber(context.Background())
 	if err != nil {
-		log.Printf("Failed to get latest block number: %v", err)
+		clog.Infof("Failed to get latest block number: %v", err)
 		latestBlockNumber = 0 // 如果获取失败，从0开始
 	}
-	fmt.Printf("Latest block number: %d\n", latestBlockNumber)
-	fmt.Printf("Listening for events on contract: %s\n", c.eventListenAddress.Address.Hex())
+	clog.Infof("Latest block number: %d\n", latestBlockNumber)
+	clog.Infof("Listening for events on contract: %s\n", c.eventListenAddress.Address.Hex())
 
 	// 计算正确的CmHash事件签名
 	eventSignature := "CmHash(bytes32,uint256)"
 	expectedTopic := common.BytesToHash(crypto.Keccak256([]byte(eventSignature))).Hex()
-	fmt.Printf("Expected CmHash event topic: %s\n", expectedTopic)
+	clog.Infof("Expected CmHash event topic: %s\n", expectedTopic)
 
 	eventLogParams := types.EventLogParams{
 		FromBlock: latestBlockNumber + 1,                                         // 从最近区块开始监听，确保捕获历史事件
@@ -134,34 +134,34 @@ func (c *ChainSdk) ListenEvent(eventListenChan chan map[string][]byte) {
 		},
 	}
 
-	log.Printf("Starting event subscription from block %d to latest", latestBlockNumber+1)
+	clog.Infof("Starting event subscription from block %d to latest", latestBlockNumber+1)
 
 	// 使用SubscribeEventLogs函数订阅事件
 	taskId, err := client.SubscribeEventLogs(context.Background(), eventLogParams, func(status int, logs []types.Log) {
-		log.Printf("📥 Event callback triggered: status=%d, logs=%d", status, len(logs))
+		clog.Infof("📥 Event callback triggered: status=%d, logs=%d", status, len(logs))
 
 		if status != 0 {
-			log.Printf("Event subscription error, status: %d", status)
+			clog.Infof("Event subscription error, status: %d", status)
 			return
 		}
 
 		// 处理每个事件日志
 		for i, eventLog := range logs {
-			log.Printf("Processing event log %d:", i)
-			log.Printf("  Contract: %s", eventLog.Address)
-			log.Printf("  Topics count: %d", len(eventLog.Topics))
+			clog.Infof("Processing event log %d:", i)
+			clog.Infof("  Contract: %s", eventLog.Address)
+			clog.Infof("  Topics count: %d", len(eventLog.Topics))
 
 			// 输出所有topics用于调试
 			for j, topic := range eventLog.Topics {
-				log.Printf("    Topic[%d]: %s", j, topic.Hex())
+				clog.Infof("    Topic[%d]: %s", j, topic.Hex())
 			}
-			log.Printf("  Data: %s", eventLog.Data)
+			clog.Infof("  Data: %s", eventLog.Data)
 
 			// 解析CmHash事件
 			if len(eventLog.Topics) >= 3 {
 				// 检查事件签名是否匹配
 				if eventLog.Topics[0].Hex() == expectedTopic {
-					log.Printf("✅ Found matching CmHash event!")
+					clog.Infof("✅ Found matching CmHash event!")
 
 					// Topics[0] 是事件签名
 					// Topics[1] 是 hash (bytes32, indexed)
@@ -174,7 +174,7 @@ func (c *ChainSdk) ListenEvent(eventListenChan chan map[string][]byte) {
 					phase := new(big.Int)
 					phase.SetBytes(eventLog.Topics[2].Bytes())
 
-					log.Printf("Parsed CmHash: hash=%x, phase=%d", re_eventHash, phase.Int64())
+					clog.Infof("Parsed CmHash: hash=%x, phase=%d", re_eventHash, phase.Int64())
 
 					// 构造返回字典
 					returnDict := make(map[string][]byte)
@@ -184,45 +184,45 @@ func (c *ChainSdk) ListenEvent(eventListenChan chan map[string][]byte) {
 					// 发送到通道
 					select {
 					case c.eventListenChan <- returnDict:
-						log.Printf("🎯 CmHash event sent to channel: hash=%x, phase=%d", re_eventHash, phase.Int64())
+						clog.Infof("🎯 CmHash event sent to channel: hash=%x, phase=%d", re_eventHash, phase.Int64())
 					default:
-						log.Printf("⚠️ Event channel full, skipping event")
+						clog.Infof("⚠️ Event channel full, skipping event")
 					}
 				} else {
-					log.Printf("ℹ️ Found event with different signature: %s (expected: %s)",
+					clog.Infof("ℹ️ Found event with different signature: %s (expected: %s)",
 						eventLog.Topics[0].Hex(), expectedTopic)
 				}
 			} else {
-				log.Printf("⚠️ Event log doesn't have enough topics (expected >= 3, got %d)", len(eventLog.Topics))
+				clog.Infof("⚠️ Event log doesn't have enough topics (expected >= 3, got %d)", len(eventLog.Topics))
 			}
 		}
 	})
 
 	if err != nil {
-		log.Printf("Failed to subscribe to events: %v", err)
+		clog.Infof("Failed to subscribe to events: %v", err)
 		return
 	}
 
-	log.Printf("Event subscription started with taskId: %s", taskId)
+	clog.Infof("Event subscription started with taskId: %s", taskId)
 
 	// 保持goroutine运行，直到需要停止
 	select {}
 }
 
-func file2Bytes(filename string) ([]byte, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	stats, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	data := make([]byte, stats.Size())
-	file.Read(data)
-	return data, nil
-}
+// func file2Bytes(filename string) ([]byte, error) {
+// 	file, err := os.Open(filename)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer file.Close()
+// 	stats, err := file.Stat()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	data := make([]byte, stats.Size())
+// 	file.Read(data)
+// 	return data, nil
+// }
 
 /**
  * @description: 接收消息，实际上是已经收到了消息，要发到自己所在的那个链上
@@ -241,7 +241,7 @@ func (c *ChainSdk) ReceiveMsg(args_cm utils.CrossChainMessage, args_proof []byte
 	aggregatorInstance, err := contract_aggregator.NewContractAggregator(
 		c.aggregatorAddress.Address, client.Client)
 	if err != nil {
-		log.Printf("Failed to create aggregator instance: %v", err)
+		clog.Infof("Failed to create aggregator instance: %v", err)
 		return ""
 	}
 
@@ -255,17 +255,17 @@ func (c *ChainSdk) ReceiveMsg(args_cm utils.CrossChainMessage, args_proof []byte
 	// 调用聚合合约的ReceiveMsg，传入cmBytes作为data参数
 	_, receipt, err := aggregatorSession.ReceiveMsg(cmBytes)
 	if err != nil {
-		log.Printf("Failed to call ReceiveMsg: %v", err)
+		clog.Infof("Failed to call ReceiveMsg: %v", err)
 		return ""
 	}
 
 	if receipt.Status != 0 {
-		log.Printf("ReceiveMsg transaction failed with status: %d", receipt.Status)
+		clog.Infof("ReceiveMsg transaction failed with status: %d", receipt.Status)
 		return ""
 	}
 
 	txid := receipt.TransactionHash
-	log.Printf("ReceiveMsg successful, txid: %s", txid)
+	clog.Infof("ReceiveMsg successful, txid: %s", txid)
 	return txid
 }
 
@@ -286,7 +286,7 @@ func (c *ChainSdk) AcknowledgeMsg(args_cm utils.CrossChainMessage, args_proof []
 	aggregatorInstance, err := contract_aggregator.NewContractAggregator(
 		c.aggregatorAddress.Address, client.Client)
 	if err != nil {
-		log.Printf("Failed to create aggregator instance: %v", err)
+		clog.Infof("Failed to create aggregator instance: %v", err)
 		return ""
 	}
 
@@ -300,17 +300,17 @@ func (c *ChainSdk) AcknowledgeMsg(args_cm utils.CrossChainMessage, args_proof []
 	// 调用聚合合约的AcknowledgeMsg，传入data，返回交易哈希
 	_, receipt, err := aggregatorSession.AcknowledgeMsg(cmBytes)
 	if err != nil {
-		log.Printf("Failed to call AcknowledgeMsg: %v", err)
+		clog.Infof("Failed to call AcknowledgeMsg: %v", err)
 		return ""
 	}
 
 	if receipt.Status != 0 {
-		log.Printf("AcknowledgeMsg transaction failed with status: %d", receipt.Status)
+		clog.Infof("AcknowledgeMsg transaction failed with status: %d", receipt.Status)
 		return ""
 	}
 
 	txid := receipt.TransactionHash
-	log.Printf("AcknowledgeMsg successful, txid: %s", txid)
+	clog.Infof("AcknowledgeMsg successful, txid: %s", txid)
 	return txid
 }
 
@@ -319,7 +319,7 @@ func (c *ChainSdk) QueryReqCmByHash(cmhash [32]byte) [][]byte {
 	transportInstance, err := eventlisten.NewEventlisten(
 		c.eventListenAddress.Address, c.client.Client)
 	if err != nil {
-		log.Printf("Failed to create transport instance: %v", err)
+		clog.Infof("Failed to create transport instance: %v", err)
 		return nil
 	}
 
@@ -333,7 +333,7 @@ func (c *ChainSdk) QueryReqCmByHash(cmhash [32]byte) [][]byte {
 	// 调用transport合约的GetReqCmByHash，传入cmhash，返回查询结果
 	result, err := transportSession.GetReqCmByHash(cmhash)
 	if err != nil {
-		log.Printf("Failed to query req cm by hash: %v", err)
+		clog.Infof("Failed to query req cm by hash: %v", err)
 		return nil
 	}
 
@@ -365,7 +365,7 @@ func (c *ChainSdk) QueryRespCmByHash(cmHash [32]byte) [][]byte {
 	eventInstance, err := eventlisten.NewEventlisten(
 		c.eventListenAddress.Address, c.client.Client)
 	if err != nil {
-		log.Printf("Failed to create event instance: %v", err)
+		clog.Infof("Failed to create event instance: %v", err)
 		return nil
 	}
 
@@ -379,7 +379,7 @@ func (c *ChainSdk) QueryRespCmByHash(cmHash [32]byte) [][]byte {
 	// 调用event合约的GetRespCmByHash，传入cmHash，返回查询结果
 	eventResult, err := eventSession.GetRespCmByHash(cmHash)
 	if err != nil {
-		log.Printf("Failed to query resp cm by hash: %v", err)
+		clog.Infof("Failed to query resp cm by hash: %v", err)
 		return nil
 	}
 
@@ -411,7 +411,7 @@ func (c *ChainSdk) QueryAckCmByHash(cmHash [32]byte) [][]byte {
 	eventInstance, err := eventlisten.NewEventlisten(
 		c.eventListenAddress.Address, c.client.Client)
 	if err != nil {
-		log.Printf("Failed to create event instance: %v", err)
+		clog.Infof("Failed to create event instance: %v", err)
 		return nil
 	}
 
@@ -425,7 +425,7 @@ func (c *ChainSdk) QueryAckCmByHash(cmHash [32]byte) [][]byte {
 	// 调用event合约的GetAckCmByHash，传入cmHash，返回查询结果
 	eventResult, err := eventSession.GetAckCmByHash(cmHash)
 	if err != nil {
-		log.Printf("Failed to query ack cm by hash: %v", err)
+		clog.Infof("Failed to query ack cm by hash: %v", err)
 		return nil
 	}
 

@@ -325,53 +325,6 @@ func main() {
 			<-stop
 		},
 	}
-	// testCmd := &cobra.Command{
-	// 	Use:   "test <dstChainId> <srcAppId> <dstAppId> <appArg>",
-	// 	Short: "Send a cross-chain message to chain",
-	// 	Args:  cobra.MaximumNArgs(4),
-	// 	Run: func(cmd *cobra.Command, args []string) {
-	// 		yamlConfig := readYAML()
-	// 		if yamlConfig.Chain.AggregatorAddr == "" {
-	// 			clog.Logf("You should give the address of aggregator contract.")
-	// 			os.Exit(-1)
-	// 		}
-	// 		if len(args) == 0 {
-	// 			//TODO：调用聚合合约的SendMsg函数，传入DstChainId、SrcAppId、DstAppId和AppArgs
-	// 			//聚合合约地址从yamlConfig中获取
-	// 			//注意，你的后边的参数，从yamlConfig.Test中读取，以下是一个示例：
-
-	// 			// sdk.InvokeContractSync(chainClient, yamlConfig.Chain.AggregatorAddr, "SendMsg", &h2chainpb.AggregatorSendMsgInput{
-	// 			// 	DstChainId: yamlConfig.Test.DstChainId,
-	// 			// 	SrcAppId:   yamlConfig.Test.SrcAppId,
-	// 			// 	DstAppId:   yamlConfig.Test.DstAppId,
-	// 			// 	AppArgs:    []byte(yamlConfig.Test.AppArgs),
-	// 			// }, &empty.Empty{})
-	// 		} else if len(args) >= 3 {
-	// 			dstChainId, _ := strconv.Atoi(args[0])
-	// 			srcAppId, _ := strconv.Atoi(args[1])
-	// 			dstAppId, _ := strconv.Atoi(args[2])
-	// 			appArg := ""
-	// 			//TODO：调用聚合合约的SendMsg函数，传入DstChainId、SrcAppId、DstAppId和AppArgs
-	// 			//注意，参数从以上变量中获取
-	// 			if len(args) == 4 {
-	// 				appArg = args[3]
-	// 			}
-	// 			// sdk.InvokeContractSync(chainClient, yamlConfig.Chain.AggregatorAddr, "SendMsg", &h2chainpb.AggregatorSendMsgInput{
-	// 			// 	DstChainId: uint64(dstChainId),
-	// 			// 	SrcAppId:   uint64(srcAppId),
-	// 			// 	DstAppId:   uint64(dstAppId),
-	// 			// 	AppArgs:    []byte(appArg),
-	// 			// }, &empty.Empty{})
-	// 		}
-	// 	},
-	// }
-	// rootCmd.AddCommand(deployCmd)
-	// rootCmd.AddCommand(startCmd)
-	// rootCmd.AddCommand(testCmd)
-	// if err := rootCmd.Execute(); err != nil {
-	// 	fmt.Println(err)
-	// 	os.Exit(1)
-	// }
 	testCmd := &cobra.Command{
 		Use:   "test <dstChainId> <srcAppId> <dstAppId> <appArg>",
 		Short: "Send a cross-chain message to chain",
@@ -382,9 +335,6 @@ func main() {
 				clog.Logf("You should give the address of aggregator contract.")
 				os.Exit(-1)
 			}
-
-			// 添加必要的导入到文件顶部
-			// "github.com/ethereum/go-ethereum/common"
 
 			// 从配置初始化FISCO BCOS客户端
 			privateKey, err := hex.DecodeString( /*yamlConfig.Chain.PrivateKey*/ "145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58")
@@ -615,16 +565,6 @@ func main() {
 
 			go func() {
 				clog.Info("🔍 Step 3: Starting event subscription test...")
-
-				// 使用FISCO BCOS事件订阅
-				// eventLogParams := fisco_types.EventLogParams{
-				// 	FromBlock: 1,  // 从当前区块开始监听新事件
-				// 	ToBlock:   -1, // 到最新区块
-				// 	Addresses: []string{yamlConfig.Chain.TransportAddr},
-				// 	Topics:    []string{}, // 监听所有事件
-				// 	GroupID:  "1",
-				// 	FilterID: "bb31e4ec086c48e18f21cb994e2e5967",
-				// }
 				var eventLogParams fisco_types.EventLogParams
 				eventLogParams.FromBlock = 1 // 从区块1开始监听
 				eventLogParams.ToBlock = -1  // 监听到最新区块
