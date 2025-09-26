@@ -34,6 +34,7 @@ import (
 	"crossFab/contracts/layer_transport/transportreg"
 	"crossFab/contracts/layer_verification/vericationprotocol"
 	"crossFab/contracts/layer_verification/verificationreg"
+	"crossFab/contracts/universalkvstore"
 	"crossFab/contracts/utils/errorinfo"
 	"crossFab/contracts/utils/types"
 
@@ -304,10 +305,23 @@ func main() {
 					clog.Errorf("❌ Aggregator address mismatch!")
 				}
 			}
+			// =================== 第六步：部署通用键值存储合约 ===================
+			clog.Info("=================Step 6: Deploy UniversalKVStore===============")
+			//部署通用键值存储合约
+			kvStoreAddress, kvStoreReceipt, _, err := universalkvstore.DeployUniversalkvstore(client.GetTransactOpts(), client)
+			if err != nil || kvStoreReceipt.Status != 0 {
+				clog.Fatalf("Failed to deploy UniversalKVStore: %v", err)
+			}
+			clog.Infof("✅ UniversalKVStore deployed: %s", kvStoreAddress.Hex())
+			// =================== 第七步：部署完成，输出合约地址 ===================
 
 			// 在本函数末尾输出两个合约的地址：TransportContract、AggregatorContract
 			clog.Infof("TransportContract Addr = %s", eventListenAddress.Hex())
 			clog.Infof("AggregatorContract Addr = %s", aggregatorAddress.Hex())
+			clog.Infof("UniversalKVStore Addr = %s", kvStoreAddress.Hex())
+			// 将合约地址写入配置文件
+			yamlConfig.Chain.TransportAddr = eventListenAddress.Hex()
+			yamlConfig.Chain.AggregatorAddr = aggregatorAddress.Hex()
 
 			// 部署完成总结
 			clog.Info("All cross-chain contracts deployed and configured successfully!")
