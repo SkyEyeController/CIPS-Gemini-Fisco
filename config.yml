@@ -27,5 +27,5 @@ test:
   dst_chain_id: 12
   src_app_id: 1
   dst_app_id: 1
-  app_args: abcdeasd
+  app_args: (set,luanboyue,911)
 
