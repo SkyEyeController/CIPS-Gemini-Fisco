@@ -17,11 +17,9 @@ relayer:
 
   targets:
     - chain_id: 911
-      url: http://218.12.120.170:31110
+      url: http://101.46.70.132:6000
     - chain_id: 14
       url: http://127.0.0.1:6000
-    - chain_id: 30000
-      url: http://127.0.0.1:8300
 
 test:
   dst_chain_id: 911

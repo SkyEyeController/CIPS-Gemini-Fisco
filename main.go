@@ -492,6 +492,26 @@ func main() {
 				clog.Errorf("   crossFab test <dstChainId> <srcAppId> <dstAppId> [appArg]  # Use command line parameters")
 				os.Exit(-1)
 			}
+
+			//检查KVset是否成功
+			time.Sleep(20 * time.Second)
+			// Create app instance to check KV operations
+			appInstance, err := app.NewApp(common.HexToAddress("0x8BE0b17E692A36cF5e9A371F7F2f4bD6D33665f0"), client)
+			if err != nil {
+				clog.Warnf("Failed to create app instance: %v", err)
+			} else {
+				appSession := &app.AppSession{
+					Contract:     appInstance,
+					CallOpts:     *client.GetCallOpts(),
+					TransactOpts: *client.GetTransactOpts(),
+				}
+				value, err := appSession.Get("luanboyue")
+				if err != nil {
+					clog.Warnf("Failed to get value from app: %v", err)
+				} else {
+					clog.Infof("Retrieved value: %s", value)
+				}
+			}
 		},
 	}
 	debugCmd := &cobra.Command{
