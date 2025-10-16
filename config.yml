@@ -3,27 +3,24 @@ chain:
   hostname: http://127.0.0.1:8545
   sender_address: hHu9yEnSNpHKyAGW7S4wBsaGDaNL74kbw6xTKDStEJzzgo9sv
   private_key: 145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58
-  transport_addr: 0x3ef0bF0F29156E7384c53af1d67b135122c16970
-  aggregator_addr: 0xef73c56428cc06A7a48dDE66D9F6Ca9c54bbc8f7
-
+  transport_addr: 0xE25318b9AA00A68eEd174321c551F1431178c254
+  aggregator_addr: 0xf8e7a713E802C14Ce4BF0aF74936e047895931cd
+  app_addr: 0x10A0d436d9AE91d08222e1cb385564204DB6e2cA
 relayer:
   server: http://127.0.0.1:6000
   enable_relaychain: false
   verifications:
-    - id: 1
-      args: ""
-    - id: 2
-      args: ""
-
+  - id: 1
+    args: ""
+  - id: 2
+    args: ""
   targets:
-    - chain_id: 911
-      url: http://101.46.70.132:6000
-    - chain_id: 14
-      url: http://127.0.0.1:6000
-
+  - chain_id: 911
+    url: http://101.46.70.132:6000
+  - chain_id: 14
+    url: http://127.0.0.1:6000
 test:
   dst_chain_id: 911
   src_app_id: 1
   dst_app_id: 1
-  app_args: (set,luanboyue,911)
-
+  app_args: set luanboyue 911

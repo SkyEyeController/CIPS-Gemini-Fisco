@@ -18,6 +18,7 @@ type YamlConfig struct {
 		PrivateKey     string `yaml:"private_key"`
 		TransportAddr  string `yaml:"transport_addr"`
 		AggregatorAddr string `yaml:"aggregator_addr"`
+		AppAddr        string `yaml:"app_addr"`
 	} `yaml:"chain"`
 	Relayer struct {
 		ServerUrl        string               `yaml:"server"`

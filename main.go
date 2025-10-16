@@ -304,23 +304,94 @@ func main() {
 					clog.Errorf("❌ Aggregator address mismatch!")
 				}
 			}
-			// =================== 第六步：部署通用键值存储合约 ===================
-			// clog.Info("=================Step 6: Deploy UniversalKVStore===============")
-			// //部署通用键值存储合约
-			// kvStoreAddress, kvStoreReceipt, _, err := universalkvstore.DeployUniversalkvstore(client.GetTransactOpts(), client)
-			// if err != nil || kvStoreReceipt.Status != 0 {
-			// 	clog.Fatalf("Failed to deploy UniversalKVStore: %v", err)
-			// }
-			// clog.Infof("✅ UniversalKVStore deployed: %s", kvStoreAddress.Hex())
+
+			// =================== 第六步：检查所有注册情况 ===================
+			clog.Info("=================Step 6: Verify All Registrations===============")
+			// 验证所有协议是否正确注册
+			// 验证验证协议
+			verImplAddr, _, err := verificationRegSession.Get(big.NewInt(1))
+			if err != nil {
+				clog.Errorf("Failed to get verification protocol address: %v", err)
+			} else {
+				clog.Infof("🔍 Verification protocol address: %s", verImplAddr.Hex())
+				if verImplAddr.Hex() == verificationImplAddress.Hex() {
+					clog.Infof("✅ Verification protocol address verification passed")
+				} else {
+					clog.Errorf("❌ Verification protocol address mismatch!")
+				}
+			}
+			// 验证转发协议
+			transImplAddr, _, err := transportRegSession.Get(big.NewInt(1))
+			if err != nil {
+				clog.Errorf("Failed to get transport protocol address: %v", err)
+			} else {
+				clog.Infof("🔍 Transport protocol address (from registry): %s", transImplAddr.Hex())
+				// 我们在注册时使用的是 EventListen 作为 transport 的实现，因此这里应当与 eventListenAddress 比较
+				if transImplAddr.Hex() == eventListenAddress.Hex() {
+					clog.Infof("✅ Transport protocol address verification passed (matches EventListen)")
+				} else {
+					clog.Errorf("❌ Transport protocol address mismatch! expected EventListen: %s", eventListenAddress.Hex())
+				}
+			}
+			// 验证传输协议
+			transmImplAddr, _, err := transmissionRegSession.Get(big.NewInt(1))
+			if err != nil {
+				clog.Errorf("Failed to get transmission protocol address: %v", err)
+			} else {
+				clog.Infof("🔍 Transmission protocol address: %s", transmImplAddr.Hex())
+				if transmImplAddr.Hex() == transmissionImplAddress.Hex() {
+					clog.Infof("✅ Transmission protocol address verification passed")
+				} else {
+					clog.Errorf("❌ Transmission protocol address mismatch!")
+				}
+			}
+			// 验证事务协议
+			txImplAddr, _, err := transactionRegSession.Get(big.NewInt(1))
+			if err != nil {
+				clog.Errorf("Failed to get transaction protocol address: %v", err)
+			} else {
+				clog.Infof("🔍 Transaction protocol address: %s", txImplAddr.Hex())
+				if txImplAddr.Hex() == transactionImplAddress.Hex() {
+					clog.Infof("✅ Transaction protocol address verification passed")
+				} else {
+					clog.Errorf("❌ Transaction protocol address mismatch!")
+				}
+			}
+			// 验证应用协议
+			appImplAddr, _, err := appRegSession.Get(big.NewInt(1))
+			if err != nil {
+				clog.Errorf("Failed to get app protocol address: %v", err)
+			} else {
+				clog.Infof("🔍 App protocol address: %s", appImplAddr.Hex())
+				if appImplAddr.Hex() == appImplAddress.Hex() {
+					clog.Infof("✅ App protocol address verification passed")
+				} else {
+					clog.Errorf("❌ App protocol address mismatch!")
+				}
+			}
+
 			// =================== 第七步：部署完成，输出合约地址 ===================
 
 			// 在本函数末尾输出两个合约的地址：TransportContract、AggregatorContract
 			clog.Infof("TransportContract Addr = %s", eventListenAddress.Hex())
 			clog.Infof("AggregatorContract Addr = %s", aggregatorAddress.Hex())
+			clog.Infof("AppContract Addr = %s", appImplAddress.Hex())
 			//clog.Infof("UniversalKVStore Addr = %s", kvStoreAddress.Hex())
 			// 将合约地址写入配置文件
 			yamlConfig.Chain.TransportAddr = eventListenAddress.Hex()
 			yamlConfig.Chain.AggregatorAddr = aggregatorAddress.Hex()
+			yamlConfig.Chain.AppAddr = appImplAddress.Hex()
+
+			// 尝试将更新写回 config.yml
+			outData, err := yaml.Marshal(&yamlConfig)
+			if err != nil {
+				clog.Fatalf("Failed to marshal YAML config: %v", err)
+			}
+			err = ioutil.WriteFile("config.yml", outData, 0644)
+			if err != nil {
+				clog.Fatalf("Failed to write updated config.yml: %v", err)
+			}
+			clog.Infof("✅ Updated config.yml with deployed contract addresses")
 
 			// 部署完成总结
 			clog.Info("All cross-chain contracts deployed and configured successfully!")
@@ -397,7 +468,12 @@ func main() {
 				dstChainId := big.NewInt(int64(yamlConfig.Test.DstChainId))
 				srcAppId := big.NewInt(int64(yamlConfig.Test.SrcAppId))
 				dstAppId := big.NewInt(int64(yamlConfig.Test.DstAppId))
-				appArgs := [][]byte{[]byte(yamlConfig.Test.AppArgs)}
+				// 将 yamlConfig.Test.AppArgs 按空白拆分为多个参数，例如 "set luanboyue 911" -> ["set","luanboyue","911"]
+				parts := strings.Fields(yamlConfig.Test.AppArgs)
+				appArgs := make([][]byte, len(parts))
+				for i, p := range parts {
+					appArgs[i] = []byte(p)
+				}
 
 				clog.Infof("DEBUG: dstChainId=%v, srcAppId=%v, dstAppId=%v, appArgs=%v\n", dstChainId, srcAppId, dstAppId, appArgs)
 
@@ -493,25 +569,6 @@ func main() {
 				os.Exit(-1)
 			}
 
-			//检查KVset是否成功
-			time.Sleep(20 * time.Second)
-			// Create app instance to check KV operations
-			appInstance, err := app.NewApp(common.HexToAddress("0x8BE0b17E692A36cF5e9A371F7F2f4bD6D33665f0"), client)
-			if err != nil {
-				clog.Warnf("Failed to create app instance: %v", err)
-			} else {
-				appSession := &app.AppSession{
-					Contract:     appInstance,
-					CallOpts:     *client.GetCallOpts(),
-					TransactOpts: *client.GetTransactOpts(),
-				}
-				value, err := appSession.Get("luanboyue")
-				if err != nil {
-					clog.Warnf("Failed to get value from app: %v", err)
-				} else {
-					clog.Infof("Retrieved value: %s", value)
-				}
-			}
 		},
 	}
 	debugCmd := &cobra.Command{
@@ -599,14 +656,30 @@ func main() {
 			go func() {
 				clog.Info("🔍 Step 3: Starting event subscription test...")
 				var eventLogParams fisco_types.EventLogParams
-				eventLogParams.FromBlock = 1 // 从区块1开始监听
-				eventLogParams.ToBlock = -1  // 监听到最新区块
-				eventLogParams.Addresses = []string{strings.ToLower(yamlConfig.Chain.TransportAddr)}
+				// Start listening from the next block after the current latest block to avoid historical events
+				fromBlock := int64(latestBlockNumber) + 1
+				if fromBlock <= 0 {
+					fromBlock = 1
+				}
+				eventLogParams.FromBlock = fromBlock
+				eventLogParams.ToBlock = -1 // 监听到最新区块
+				// Listen on transport, aggregator and app addresses so we don't miss events emitted by any of them
+				addrs := []string{}
+				if yamlConfig.Chain.TransportAddr != "" {
+					addrs = append(addrs, strings.ToLower(yamlConfig.Chain.TransportAddr))
+				}
+				if yamlConfig.Chain.AggregatorAddr != "" {
+					addrs = append(addrs, strings.ToLower(yamlConfig.Chain.AggregatorAddr))
+				}
+				if yamlConfig.Chain.AppAddr != "" {
+					addrs = append(addrs, strings.ToLower(yamlConfig.Chain.AppAddr))
+				}
+				eventLogParams.Addresses = addrs
 				// 监听Transport合约地址
 				eventLogParams.Topics = []string{} // 监听所有事件
 
-				clog.Infof("   Subscription params: FromBlock=%d, ToBlock=-1", 1)
-				clog.Infof("   Monitoring contract: %s", yamlConfig.Chain.TransportAddr)
+				clog.Infof("   Subscription params: FromBlock=%d, ToBlock=-1", eventLogParams.FromBlock)
+				clog.Infof("   Monitoring contracts: %v", eventLogParams.Addresses)
 
 				taskId, err := client.SubscribeEventLogs(context.Background(), eventLogParams,
 					func(status int, logs []fisco_types.Log) {
@@ -772,6 +845,66 @@ func main() {
 			}
 		},
 	}
+	// 检查KV命令
+	kvcmd := &cobra.Command{
+		Use:   "kv set/get <key> [value]",
+		Short: "Set or get a key-value pair in UniversalKVStore contract",
+		Args:  cobra.MinimumNArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+
+			yamlConfig := readYAML()
+
+			//连接配置 - 从yamlConfig中读取配置信息
+			privateKey, _ := hex.DecodeString("145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58")
+
+			// 创建客户端配置对象
+			config := &client.Config{
+				IsSMCrypto:  false,
+				GroupID:     "group0",
+				PrivateKey:  privateKey,
+				Host:        "127.0.0.1",
+				Port:        20200,
+				TLSCaFile:   "./ca.crt",
+				TLSKeyFile:  "./sdk.key",
+				TLSCertFile: "./sdk.crt",
+			}
+
+			client, err := client.DialContext(context.Background(), config)
+			if err != nil {
+				clog.Fatalf("Failed to connect to FISCO BCOS: %v", err)
+			}
+			clog.Info("Successfully connected to FISCO BCOS")
+
+			// Create app instance to check KV operations
+			appInstance, err := app.NewApp(common.HexToAddress(yamlConfig.Chain.AppAddr), client)
+			if err != nil {
+				clog.Warnf("Failed to create app instance: %v", err)
+			} else {
+				appSession := &app.AppSession{
+					Contract:     appInstance,
+					CallOpts:     *client.GetCallOpts(),
+					TransactOpts: *client.GetTransactOpts(),
+				}
+				key := args[1]
+				if args[0] == "set" && len(args) == 3 {
+					value := args[2]
+					_, receipt, err := appSession.Set(key, value)
+					if err != nil || receipt.Status != 0 {
+						clog.Fatalf("Failed to set KV pair: %v", err)
+					}
+					clog.Infof("✅ Set KV pair: %s = %s", key, value)
+				}
+				// Get the value for the key
+				value, err := appSession.Get(key)
+				if err != nil {
+					clog.Fatalf("Failed to get value for key %s: %v", key, err)
+				}
+				clog.Infof("🔍 Get KV pair: %s = %s", key, value)
+
+			}
+		},
+	}
+	rootCmd.AddCommand(kvcmd)
 
 	rootCmd.AddCommand(deployCmd)
 	rootCmd.AddCommand(startCmd)
