@@ -1,1 +1,1 @@
-1. sdk.go中建立客户端连接需要账户证书，这个证书是放到路径下还是怎么处理？
+2025.10.16 调通kv应用逻辑，大幅度增加ccMsg.payloadReq参数debug的clog.Logf输出
