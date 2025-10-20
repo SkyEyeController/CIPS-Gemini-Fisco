@@ -3,9 +3,9 @@ chain:
   hostname: http://127.0.0.1:8545
   sender_address: hHu9yEnSNpHKyAGW7S4wBsaGDaNL74kbw6xTKDStEJzzgo9sv
   private_key: 145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58
-  transport_addr: 0x8D179cbCb6E8F4A1aaaFA5B5f641ED3e77835aDd
-  aggregator_addr: 0xAf1E2aEd401578128e722930F3aF82FedA7fa8f7
-  app_addr: 0xD076060Ab5D34cE77222eDed3D204557120828BC
+  transport_addr: 0x4DD99782754E0bfD33DCB100B9803a728b7Ad689
+  aggregator_addr: 0x762A58e444EC5A88a35D1F508a689e8AA3bc6F23
+  app_addr: 0xc440638982118c718AC3304cD96fe779383ABd34
 relayer:
   server: http://127.0.0.1:6000
   enable_relaychain: false
@@ -23,4 +23,4 @@ test:
   dst_chain_id: 911
   src_app_id: 1
   dst_app_id: 1
-  app_args: set zhengzhiyuan zzy
+  app_args: '["kv-cross","set","luanboyue","hello world for the testing sys"]'

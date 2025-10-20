@@ -10,17 +10,17 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	clog "github.com/kpango/glg"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"math/big"
+	"regexp"
 
 	contract_aggregator "crossFab/contracts"
 	"crossFab/contracts/layer_app/app"
@@ -38,7 +38,6 @@ import (
 	"crossFab/contracts/utils/types"
 
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
-	fisco_types "github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
 func readYAML() config.YamlConfig {
@@ -458,22 +457,70 @@ func main() {
 				TransactOpts: *client.GetTransactOpts(),
 			}
 
+			// helper: parse a JSON array string like ["a","b","c"] into [][]byte
+			parseAppArgs := func(jsonStr string) [][]byte {
+				jsonStr = strings.TrimSpace(jsonStr)
+				if jsonStr == "" {
+					return [][]byte{}
+				}
+
+				// 1) 直接尝试标准 JSON 数组解析
+				var parts []string
+				if err := json.Unmarshal([]byte(jsonStr), &parts); err == nil {
+					out := make([][]byte, len(parts))
+					for i, p := range parts {
+						out[i] = []byte(p)
+					}
+					return out
+				}
+
+				// 2) 尝试解析为 RawMessage（更宽松的 JSON 解析）
+				var raws []json.RawMessage
+				if err := json.Unmarshal([]byte(jsonStr), &raws); err == nil {
+					parts = make([]string, len(raws))
+					for i, r := range raws {
+						var s string
+						if err := json.Unmarshal(r, &s); err == nil {
+							parts[i] = s
+						} else {
+							parts[i] = string(r)
+						}
+					}
+					out := make([][]byte, len(parts))
+					for i, p := range parts {
+						out[i] = []byte(p)
+					}
+					return out
+				}
+
+				// 3) 回退：用正则提取所有双引号包裹的子串（保留其中的空格）
+				re := regexp.MustCompile(`"((?:\\.|[^"\\])*)"`)
+				matches := re.FindAllStringSubmatch(jsonStr, -1)
+				if len(matches) > 0 {
+					parts = make([]string, len(matches))
+					for i, m := range matches {
+						parts[i] = m[1]
+					}
+					out := make([][]byte, len(parts))
+					for i, p := range parts {
+						out[i] = []byte(p)
+					}
+					return out
+				}
+
+				// 4) 最后回退：把整个字符串当作单个参数（避免按空格拆分）
+				return [][]byte{[]byte(jsonStr)}
+			}
+
 			if len(args) == 0 {
-				// TODO：调用聚合合约的SendMsg函数，传入DstChainId、SrcAppId、DstAppId和AppArgs
-				// 聚合合约地址从yamlConfig中获取
-				// 注意，你的后边的参数，从yamlConfig.Test中读取
 				clog.Info("Sending cross-chain message with test configuration...")
 
-				// 从yamlConfig.Test中读取测试参数
 				dstChainId := big.NewInt(int64(yamlConfig.Test.DstChainId))
 				srcAppId := big.NewInt(int64(yamlConfig.Test.SrcAppId))
 				dstAppId := big.NewInt(int64(yamlConfig.Test.DstAppId))
-				// 将 yamlConfig.Test.AppArgs 按空白拆分为多个参数，例如 "set luanboyue 911" -> ["set","luanboyue","911"]
-				parts := strings.Fields(yamlConfig.Test.AppArgs)
-				appArgs := make([][]byte, len(parts))
-				for i, p := range parts {
-					appArgs[i] = []byte(p)
-				}
+
+				// yamlConfig.Test.AppArgs 格式为一个 JSON 数组字符串，如: ["kv-cross","luanboyue","911"]
+				appArgs := parseAppArgs(yamlConfig.Test.AppArgs)
 
 				clog.Infof("DEBUG: dstChainId=%v, srcAppId=%v, dstAppId=%v, appArgs=%v\n", dstChainId, srcAppId, dstAppId, appArgs)
 
@@ -517,25 +564,27 @@ func main() {
 				dstChainId, _ := strconv.Atoi(args[0])
 				srcAppId, _ := strconv.Atoi(args[1])
 				dstAppId, _ := strconv.Atoi(args[2])
-				appArg := ""
 
-				// TODO：调用聚合合约的SendMsg函数，传入DstChainId、SrcAppId、DstAppId和AppArgs
-				// 注意，参数从以上变量中获取
+				appArgJson := ""
 				if len(args) == 4 {
-					appArg = args[3]
+					// 命令行第四个参数为 JSON 数组字符串，例如: '["kv-cross","luanboyue","911"]'
+					appArgJson = args[3]
 				}
 
 				clog.Info("Sending cross-chain message with command line arguments...")
 				clog.Infof("   Destination Chain: %d", dstChainId)
 				clog.Infof("   Source App: %d", srcAppId)
 				clog.Infof("   Destination App: %d", dstAppId)
-				clog.Infof("   App Args: %s", appArg)
+				clog.Infof("   App Args(json): %s", appArgJson)
 
 				// 转换参数为合约需要的类型
 				bigDstChainId := big.NewInt(int64(dstChainId))
 				bigSrcAppId := big.NewInt(int64(srcAppId))
 				bigDstAppId := big.NewInt(int64(dstAppId))
-				appArgs := [][]byte{[]byte(appArg)}
+
+				// 解析 JSON 数组字符串为 [][]byte
+				appArgs := parseAppArgs(appArgJson)
+				clog.Infof("DEBUG: bigDstChainId=%v, bigSrcAppId=%v, bigDstAppId=%v, appArgs=%v\n", bigDstChainId, bigSrcAppId, bigDstAppId, appArgs)
 
 				// 调用聚合合约的SendMsg函数
 				_, receipt, err := aggregatorSession.SendMsg(bigDstChainId, bigSrcAppId, bigDstAppId, appArgs)
@@ -565,351 +614,351 @@ func main() {
 				// 参数不足
 				clog.Errorf("❌ Invalid arguments. Usage:")
 				clog.Errorf("   crossFab test                              # Use config.yml test parameters")
-				clog.Errorf("   crossFab test <dstChainId> <srcAppId> <dstAppId> [appArg]  # Use command line parameters")
+				clog.Errorf("   crossFab test <dstChainId> <srcAppId> <dstAppId> [appArg(json array)]  # Use command line parameters")
 				os.Exit(-1)
 			}
 
 		},
 	}
-	debugCmd := &cobra.Command{
-		Use:   "debug",
-		Short: "Debug EventListen contract and event subscription",
-		Args:  cobra.MaximumNArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			yamlConfig := readYAML()
-			if yamlConfig.Chain.TransportAddr == "" {
-				clog.Logf("You should give the address of transport contract in config.yml.")
-				clog.Logf("Please run 'deploy' command first to get the transport contract address.")
-				os.Exit(-1)
-			}
+	// debugCmd := &cobra.Command{
+	// 	Use:   "debug",
+	// 	Short: "Debug EventListen contract and event subscription",
+	// 	Args:  cobra.MaximumNArgs(0),
+	// 	Run: func(cmd *cobra.Command, args []string) {
+	// 		yamlConfig := readYAML()
+	// 		if yamlConfig.Chain.TransportAddr == "" {
+	// 			clog.Logf("You should give the address of transport contract in config.yml.")
+	// 			clog.Logf("Please run 'deploy' command first to get the transport contract address.")
+	// 			os.Exit(-1)
+	// 		}
 
-			// 初始化FISCO BCOS客户端
-			privateKey, err := hex.DecodeString("145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58")
-			if err != nil {
-				clog.Fatalf("Failed to decode private key: %v", err)
-			}
+	// 		// 初始化FISCO BCOS客户端
+	// 		privateKey, err := hex.DecodeString("145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58")
+	// 		if err != nil {
+	// 			clog.Fatalf("Failed to decode private key: %v", err)
+	// 		}
 
-			config := &client.Config{
-				IsSMCrypto:  false,
-				GroupID:     "group0",
-				PrivateKey:  privateKey,
-				Host:        "127.0.0.1",
-				Port:        20200,
-				TLSCaFile:   "./ca.crt",
-				TLSKeyFile:  "./sdk.key",
-				TLSCertFile: "./sdk.crt",
-			}
+	// 		config := &client.Config{
+	// 			IsSMCrypto:  false,
+	// 			GroupID:     "group0",
+	// 			PrivateKey:  privateKey,
+	// 			Host:        "127.0.0.1",
+	// 			Port:        20200,
+	// 			TLSCaFile:   "./ca.crt",
+	// 			TLSKeyFile:  "./sdk.key",
+	// 			TLSCertFile: "./sdk.crt",
+	// 		}
 
-			client, err := client.DialContext(context.Background(), config)
-			if err != nil {
-				clog.Fatalf("Failed to connect to FISCO BCOS: %v", err)
-			}
+	// 		client, err := client.DialContext(context.Background(), config)
+	// 		if err != nil {
+	// 			clog.Fatalf("Failed to connect to FISCO BCOS: %v", err)
+	// 		}
 
-			// 创建EventListen合约实例
-			eventListenInstance, err := eventlisten.NewEventlisten(
-				common.HexToAddress(yamlConfig.Chain.TransportAddr), client)
-			if err != nil {
-				clog.Fatalf("Failed to create EventListen instance: %v", err)
-			}
+	// 		// 创建EventListen合约实例
+	// 		eventListenInstance, err := eventlisten.NewEventlisten(
+	// 			common.HexToAddress(yamlConfig.Chain.TransportAddr), client)
+	// 		if err != nil {
+	// 			clog.Fatalf("Failed to create EventListen instance: %v", err)
+	// 		}
 
-			eventListenSession := &eventlisten.EventlistenSession{
-				Contract:     eventListenInstance,
-				CallOpts:     *client.GetCallOpts(),
-				TransactOpts: *client.GetTransactOpts(),
-			}
+	// 		eventListenSession := &eventlisten.EventlistenSession{
+	// 			Contract:     eventListenInstance,
+	// 			CallOpts:     *client.GetCallOpts(),
+	// 			TransactOpts: *client.GetTransactOpts(),
+	// 		}
 
-			// 1. 检查聚合器地址
-			clog.Info("🔍 Step 1: Checking EventListen configuration...")
-			aggregatorAddr, err := eventListenSession.GetAggregator()
-			if err != nil {
-				clog.Errorf("Failed to get aggregator address: %v", err)
-			} else {
-				clog.Infof("   Aggregator Address: %s", aggregatorAddr.Hex())
-				clog.Infof("   Expected Address: %s", yamlConfig.Chain.AggregatorAddr)
-				if aggregatorAddr.Hex() == yamlConfig.Chain.AggregatorAddr {
-					clog.Infof("✅ Aggregator address matches")
-				} else {
-					clog.Errorf("❌ Aggregator address mismatch!")
-				}
-			}
+	// 		// 1. 检查聚合器地址
+	// 		clog.Info("🔍 Step 1: Checking EventListen configuration...")
+	// 		aggregatorAddr, err := eventListenSession.GetAggregator()
+	// 		if err != nil {
+	// 			clog.Errorf("Failed to get aggregator address: %v", err)
+	// 		} else {
+	// 			clog.Infof("   Aggregator Address: %s", aggregatorAddr.Hex())
+	// 			clog.Infof("   Expected Address: %s", yamlConfig.Chain.AggregatorAddr)
+	// 			if aggregatorAddr.Hex() == yamlConfig.Chain.AggregatorAddr {
+	// 				clog.Infof("✅ Aggregator address matches")
+	// 			} else {
+	// 				clog.Errorf("❌ Aggregator address mismatch!")
+	// 			}
+	// 		}
 
-			// 2. 测试事件订阅
-			clog.Info("🔍 Step 2: Testing event subscription...")
+	// 		// 2. 测试事件订阅
+	// 		clog.Info("🔍 Step 2: Testing event subscription...")
 
-			// 获取当前区块号
-			latestBlockNumber, err := client.GetBlockNumber(context.Background())
-			if err != nil {
-				clog.Errorf("Failed to get latest block number: %v", err)
-				latestBlockNumber = 0
-			}
-			clog.Infof("   Current block number: %d", latestBlockNumber)
+	// 		// 获取当前区块号
+	// 		latestBlockNumber, err := client.GetBlockNumber(context.Background())
+	// 		if err != nil {
+	// 			clog.Errorf("Failed to get latest block number: %v", err)
+	// 			latestBlockNumber = 0
+	// 		}
+	// 		clog.Infof("   Current block number: %d", latestBlockNumber)
 
-			// 计算CmHash事件签名
-			eventSignature := "CmHash(bytes32,uint256)"
-			expectedTopic := common.BytesToHash(crypto.Keccak256([]byte(eventSignature))).Hex()
-			clog.Infof("   Expected CmHash event topic: %s", expectedTopic)
+	// 		// 计算CmHash事件签名
+	// 		eventSignature := "CmHash(bytes32,uint256)"
+	// 		expectedTopic := common.BytesToHash(crypto.Keccak256([]byte(eventSignature))).Hex()
+	// 		clog.Infof("   Expected CmHash event topic: %s", expectedTopic)
 
-			// 设置事件监听
-			eventListenChan := make(chan map[string][]byte, 10)
-			subscriptionDone := make(chan bool)
+	// 		// 设置事件监听
+	// 		eventListenChan := make(chan map[string][]byte, 10)
+	// 		subscriptionDone := make(chan bool)
 
-			go func() {
-				clog.Info("🔍 Step 3: Starting event subscription test...")
-				var eventLogParams fisco_types.EventLogParams
-				// Start listening from the next block after the current latest block to avoid historical events
-				fromBlock := int64(latestBlockNumber) + 1
-				if fromBlock <= 0 {
-					fromBlock = 1
-				}
-				eventLogParams.FromBlock = fromBlock
-				eventLogParams.ToBlock = -1 // 监听到最新区块
-				// Listen on transport, aggregator and app addresses so we don't miss events emitted by any of them
-				addrs := []string{}
-				if yamlConfig.Chain.TransportAddr != "" {
-					addrs = append(addrs, strings.ToLower(yamlConfig.Chain.TransportAddr))
-				}
-				if yamlConfig.Chain.AggregatorAddr != "" {
-					addrs = append(addrs, strings.ToLower(yamlConfig.Chain.AggregatorAddr))
-				}
-				if yamlConfig.Chain.AppAddr != "" {
-					addrs = append(addrs, strings.ToLower(yamlConfig.Chain.AppAddr))
-				}
-				eventLogParams.Addresses = addrs
-				// 监听Transport合约地址
-				eventLogParams.Topics = []string{} // 监听所有事件
+	// 		go func() {
+	// 			clog.Info("🔍 Step 3: Starting event subscription test...")
+	// 			var eventLogParams fisco_types.EventLogParams
+	// 			// Start listening from the next block after the current latest block to avoid historical events
+	// 			fromBlock := int64(latestBlockNumber) + 1
+	// 			if fromBlock <= 0 {
+	// 				fromBlock = 1
+	// 			}
+	// 			eventLogParams.FromBlock = fromBlock
+	// 			eventLogParams.ToBlock = -1 // 监听到最新区块
+	// 			// Listen on transport, aggregator and app addresses so we don't miss events emitted by any of them
+	// 			addrs := []string{}
+	// 			if yamlConfig.Chain.TransportAddr != "" {
+	// 				addrs = append(addrs, strings.ToLower(yamlConfig.Chain.TransportAddr))
+	// 			}
+	// 			if yamlConfig.Chain.AggregatorAddr != "" {
+	// 				addrs = append(addrs, strings.ToLower(yamlConfig.Chain.AggregatorAddr))
+	// 			}
+	// 			if yamlConfig.Chain.AppAddr != "" {
+	// 				addrs = append(addrs, strings.ToLower(yamlConfig.Chain.AppAddr))
+	// 			}
+	// 			eventLogParams.Addresses = addrs
+	// 			// 监听Transport合约地址
+	// 			eventLogParams.Topics = []string{} // 监听所有事件
 
-				clog.Infof("   Subscription params: FromBlock=%d, ToBlock=-1", eventLogParams.FromBlock)
-				clog.Infof("   Monitoring contracts: %v", eventLogParams.Addresses)
+	// 			clog.Infof("   Subscription params: FromBlock=%d, ToBlock=-1", eventLogParams.FromBlock)
+	// 			clog.Infof("   Monitoring contracts: %v", eventLogParams.Addresses)
 
-				taskId, err := client.SubscribeEventLogs(context.Background(), eventLogParams,
-					func(status int, logs []fisco_types.Log) {
-						clog.Infof("📥 Event subscription callback: status=%d, logs=%d", status, len(logs))
+	// 			taskId, err := client.SubscribeEventLogs(context.Background(), eventLogParams,
+	// 				func(status int, logs []fisco_types.Log) {
+	// 					clog.Infof("📥 Event subscription callback: status=%d, logs=%d", status, len(logs))
 
-						if status != 0 {
-							clog.Errorf("Event subscription error, status: %d", status)
-							return
-						}
+	// 					if status != 0 {
+	// 						clog.Errorf("Event subscription error, status: %d", status)
+	// 						return
+	// 					}
 
-						for i, eventLog := range logs {
-							clog.Infof("   Event %d:", i)
-							clog.Infof("     Contract: %s", eventLog.Address)
-							clog.Infof("     Topics: %d", len(eventLog.Topics))
+	// 					for i, eventLog := range logs {
+	// 						clog.Infof("   Event %d:", i)
+	// 						clog.Infof("     Contract: %s", eventLog.Address)
+	// 						clog.Infof("     Topics: %d", len(eventLog.Topics))
 
-							for j, topic := range eventLog.Topics {
-								clog.Infof("       Topic[%d]: %s", j, topic.Hex())
-							}
-							clog.Infof("     Data: %s", eventLog.Data)
+	// 						for j, topic := range eventLog.Topics {
+	// 							clog.Infof("       Topic[%d]: %s", j, topic.Hex())
+	// 						}
+	// 						clog.Infof("     Data: %s", eventLog.Data)
 
-							// 检查是否是CmHash事件或其他事件
-							if len(eventLog.Topics) >= 1 {
-								topicHex := eventLog.Topics[0].Hex()
-								if topicHex == expectedTopic {
-									clog.Infof("✅ Found CmHash event!")
-									eventListenChan <- map[string][]byte{"type": []byte("CmHash"), "found": []byte("true")}
-								} else if topicHex == "0x1ace2b42299d2f9f1ffdeefaf822c85d2b263f6105d7cf4a3e482f14032fb52e" {
-									clog.Infof("✅ Found Test_sendOut event!")
-									eventListenChan <- map[string][]byte{"type": []byte("Test_sendOut"), "found": []byte("true")}
-								} else {
-									clog.Infof("ℹ️ Found other event: %s", topicHex)
-									eventListenChan <- map[string][]byte{"type": []byte("other"), "topic": []byte(topicHex)}
-								}
-							}
-						}
-					})
+	// 						// 检查是否是CmHash事件或其他事件
+	// 						if len(eventLog.Topics) >= 1 {
+	// 							topicHex := eventLog.Topics[0].Hex()
+	// 							if topicHex == expectedTopic {
+	// 								clog.Infof("✅ Found CmHash event!")
+	// 								eventListenChan <- map[string][]byte{"type": []byte("CmHash"), "found": []byte("true")}
+	// 							} else if topicHex == "0x1ace2b42299d2f9f1ffdeefaf822c85d2b263f6105d7cf4a3e482f14032fb52e" {
+	// 								clog.Infof("✅ Found Test_sendOut event!")
+	// 								eventListenChan <- map[string][]byte{"type": []byte("Test_sendOut"), "found": []byte("true")}
+	// 							} else {
+	// 								clog.Infof("ℹ️ Found other event: %s", topicHex)
+	// 								eventListenChan <- map[string][]byte{"type": []byte("other"), "topic": []byte(topicHex)}
+	// 							}
+	// 						}
+	// 					}
+	// 				})
 
-				if err != nil {
-					clog.Errorf("Failed to subscribe to events: %v", err)
-					subscriptionDone <- false
-					return
-				}
+	// 			if err != nil {
+	// 				clog.Errorf("Failed to subscribe to events: %v", err)
+	// 				subscriptionDone <- false
+	// 				return
+	// 			}
 
-				clog.Infof("✅ Event subscription started with taskId: %s", taskId)
-				subscriptionDone <- true
+	// 			clog.Infof("✅ Event subscription started with taskId: %s", taskId)
+	// 			subscriptionDone <- true
 
-				// 保持订阅活跃
-				select {}
-			}()
+	// 			// 保持订阅活跃
+	// 			select {}
+	// 		}()
 
-			// 等待订阅启动
-			if success := <-subscriptionDone; !success {
-				clog.Errorf("❌ Event subscription failed")
-				return
-			}
+	// 		// 等待订阅启动
+	// 		if success := <-subscriptionDone; !success {
+	// 			clog.Errorf("❌ Event subscription failed")
+	// 			return
+	// 		}
 
-			// 3. 手动触发事件 - 测试 emit_sendOut (Test_sendOut 事件)
-			clog.Info("🔍 Step 4a: Testing emit_sendOut (Test_sendOut event)...")
-			_, emitReceipt, err := eventListenSession.EmitSendOut()
-			if err != nil {
-				clog.Errorf("Failed to call emit_sendOut: %v", err)
-			} else {
-				clog.Infof("✅ emit_sendOut called successfully")
-				clog.Infof("   Transaction Hash: %s", emitReceipt.TransactionHash)
-				clog.Infof("   Gas Used: %s", emitReceipt.GasUsed)
+	// 		// 3. 手动触发事件 - 测试 emit_sendOut (Test_sendOut 事件)
+	// 		clog.Info("🔍 Step 4a: Testing emit_sendOut (Test_sendOut event)...")
+	// 		_, emitReceipt, err := eventListenSession.EmitSendOut()
+	// 		if err != nil {
+	// 			clog.Errorf("Failed to call emit_sendOut: %v", err)
+	// 		} else {
+	// 			clog.Infof("✅ emit_sendOut called successfully")
+	// 			clog.Infof("   Transaction Hash: %s", emitReceipt.TransactionHash)
+	// 			clog.Infof("   Gas Used: %s", emitReceipt.GasUsed)
 
-				if len(emitReceipt.Logs) > 0 {
-					clog.Infof("📋 Direct Event Logs: %d", len(emitReceipt.Logs))
-					for i, log := range emitReceipt.Logs {
-						clog.Infof("   Log %d: Contract=%s, Topics=%d", i, log.Address, len(log.Topics))
-						for j, topic := range log.Topics {
-							clog.Infof("     Topic[%d]: %s", j, topic)
-						}
-					}
-				} else {
-					clog.Warnf("⚠️  No direct event logs found!")
-				}
-			}
+	// 			if len(emitReceipt.Logs) > 0 {
+	// 				clog.Infof("📋 Direct Event Logs: %d", len(emitReceipt.Logs))
+	// 				for i, log := range emitReceipt.Logs {
+	// 					clog.Infof("   Log %d: Contract=%s, Topics=%d", i, log.Address, len(log.Topics))
+	// 					for j, topic := range log.Topics {
+	// 						clog.Infof("     Topic[%d]: %s", j, topic)
+	// 					}
+	// 				}
+	// 			} else {
+	// 				clog.Warnf("⚠️  No direct event logs found!")
+	// 			}
+	// 		}
 
-			// 4. 通过聚合器触发正常的业务流程 - 测试真正的 CmHash 事件
-			clog.Info("🔍 Step 4b: Testing sendMsg via Aggregator (CmHash event)...")
-			if yamlConfig.Chain.AggregatorAddr == "" {
-				clog.Errorf("❌ Aggregator address not configured in config.yml")
-			} else {
-				// 创建聚合器合约实例
-				aggregatorInstance, err := contract_aggregator.NewContractAggregator(
-					common.HexToAddress(yamlConfig.Chain.AggregatorAddr), client)
-				if err != nil {
-					clog.Errorf("Failed to create aggregator instance: %v", err)
-				} else {
-					// 创建聚合器会话
-					aggregatorSession := &contract_aggregator.ContractAggregatorSession{
-						Contract:     aggregatorInstance,
-						CallOpts:     *client.GetCallOpts(),
-						TransactOpts: *client.GetTransactOpts(),
-					}
+	// 		// 4. 通过聚合器触发正常的业务流程 - 测试真正的 CmHash 事件
+	// 		clog.Info("🔍 Step 4b: Testing sendMsg via Aggregator (CmHash event)...")
+	// 		if yamlConfig.Chain.AggregatorAddr == "" {
+	// 			clog.Errorf("❌ Aggregator address not configured in config.yml")
+	// 		} else {
+	// 			// 创建聚合器合约实例
+	// 			aggregatorInstance, err := contract_aggregator.NewContractAggregator(
+	// 				common.HexToAddress(yamlConfig.Chain.AggregatorAddr), client)
+	// 			if err != nil {
+	// 				clog.Errorf("Failed to create aggregator instance: %v", err)
+	// 			} else {
+	// 				// 创建聚合器会话
+	// 				aggregatorSession := &contract_aggregator.ContractAggregatorSession{
+	// 					Contract:     aggregatorInstance,
+	// 					CallOpts:     *client.GetCallOpts(),
+	// 					TransactOpts: *client.GetTransactOpts(),
+	// 				}
 
-					// 使用测试参数发送跨链消息
-					dstChainId := big.NewInt(int64(yamlConfig.Test.DstChainId))
-					srcAppId := big.NewInt(int64(yamlConfig.Test.SrcAppId))
-					dstAppId := big.NewInt(int64(yamlConfig.Test.DstAppId))
-					appArgs := [][]byte{[]byte(yamlConfig.Test.AppArgs)}
+	// 				// 使用测试参数发送跨链消息
+	// 				dstChainId := big.NewInt(int64(yamlConfig.Test.DstChainId))
+	// 				srcAppId := big.NewInt(int64(yamlConfig.Test.SrcAppId))
+	// 				dstAppId := big.NewInt(int64(yamlConfig.Test.DstAppId))
+	// 				appArgs := [][]byte{[]byte(yamlConfig.Test.AppArgs)}
 
-					clog.Infof("   Calling aggregator.sendMsg with:")
-					clog.Infof("     dstChainId: %d", yamlConfig.Test.DstChainId)
-					clog.Infof("     srcAppId: %d", yamlConfig.Test.SrcAppId)
-					clog.Infof("     dstAppId: %d", yamlConfig.Test.DstAppId)
-					clog.Infof("     appArgs: %s", yamlConfig.Test.AppArgs)
+	// 				clog.Infof("   Calling aggregator.sendMsg with:")
+	// 				clog.Infof("     dstChainId: %d", yamlConfig.Test.DstChainId)
+	// 				clog.Infof("     srcAppId: %d", yamlConfig.Test.SrcAppId)
+	// 				clog.Infof("     dstAppId: %d", yamlConfig.Test.DstAppId)
+	// 				clog.Infof("     appArgs: %s", yamlConfig.Test.AppArgs)
 
-					// 调用聚合器的SendMsg函数
-					_, sendReceipt, err := aggregatorSession.SendMsg(dstChainId, srcAppId, dstAppId, appArgs)
+	// 				// 调用聚合器的SendMsg函数
+	// 				_, sendReceipt, err := aggregatorSession.SendMsg(dstChainId, srcAppId, dstAppId, appArgs)
 
-					if err != nil {
-						clog.Errorf("❌ SendMsg failed: %v", err)
-					} else if sendReceipt.Status == 0 {
-						clog.Infof("✅ Aggregator SendMsg called successfully")
-						clog.Infof("   Transaction Hash: %s", sendReceipt.TransactionHash)
-						clog.Infof("   Gas Used: %s", sendReceipt.GasUsed)
+	// 				if err != nil {
+	// 					clog.Errorf("❌ SendMsg failed: %v", err)
+	// 				} else if sendReceipt.Status == 0 {
+	// 					clog.Infof("✅ Aggregator SendMsg called successfully")
+	// 					clog.Infof("   Transaction Hash: %s", sendReceipt.TransactionHash)
+	// 					clog.Infof("   Gas Used: %s", sendReceipt.GasUsed)
 
-						if len(sendReceipt.Logs) > 0 {
-							clog.Infof("📋 Aggregator Event Logs: %d", len(sendReceipt.Logs))
-							for i, log := range sendReceipt.Logs {
-								clog.Infof("   Log %d: Contract=%s, Topics=%d", i, log.Address, len(log.Topics))
-								for j, topic := range log.Topics {
-									clog.Infof("     Topic[%d]: %s", j, topic)
-									// 检查是否是CmHash事件
-									if topic == expectedTopic {
-										clog.Infof("🎉 Found CmHash event in aggregator transaction!")
-									}
-								}
-							}
-						} else {
-							clog.Warnf("⚠️  No event logs found in aggregator transaction!")
-						}
-					} else {
-						clog.Errorf("❌ SendMsg transaction failed with status: %d", sendReceipt.Status)
-					}
-				}
-			}
+	// 					if len(sendReceipt.Logs) > 0 {
+	// 						clog.Infof("📋 Aggregator Event Logs: %d", len(sendReceipt.Logs))
+	// 						for i, log := range sendReceipt.Logs {
+	// 							clog.Infof("   Log %d: Contract=%s, Topics=%d", i, log.Address, len(log.Topics))
+	// 							for j, topic := range log.Topics {
+	// 								clog.Infof("     Topic[%d]: %s", j, topic)
+	// 								// 检查是否是CmHash事件
+	// 								if topic == expectedTopic {
+	// 									clog.Infof("🎉 Found CmHash event in aggregator transaction!")
+	// 								}
+	// 							}
+	// 						}
+	// 					} else {
+	// 						clog.Warnf("⚠️  No event logs found in aggregator transaction!")
+	// 					}
+	// 				} else {
+	// 					clog.Errorf("❌ SendMsg transaction failed with status: %d", sendReceipt.Status)
+	// 				}
+	// 			}
+	// 		}
 
-			// 5. 等待事件回调
-			clog.Info("🔍 Step 5: Waiting for event callback (15 seconds)...")
-			eventCount := 0
-			timeout := time.After(15 * time.Second)
+	// 		// 5. 等待事件回调
+	// 		clog.Info("🔍 Step 5: Waiting for event callback (15 seconds)...")
+	// 		eventCount := 0
+	// 		timeout := time.After(15 * time.Second)
 
-			for {
-				select {
-				case event := <-eventListenChan:
-					eventCount++
-					clog.Infof("🎉 Event %d detected via subscription! %v", eventCount, event)
-					if eventCount >= 2 { // 期望收到两个事件：Test_sendOut 和 CmHash
-						clog.Infof("✅ All expected events received!")
-						return
-					}
-				case <-timeout:
-					if eventCount > 0 {
-						clog.Infof("⏰ TIMEOUT: Received %d events via subscription after 15 seconds", eventCount)
-					} else {
-						clog.Warnf("⏰ TIMEOUT: No events detected via subscription after 15 seconds")
-					}
-					return
-				}
-			}
-		},
-	}
-	// 检查KV命令
-	kvcmd := &cobra.Command{
-		Use:   "kv set/get <key> [value]",
-		Short: "Set or get a key-value pair in UniversalKVStore contract",
-		Args:  cobra.MinimumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
+	// 		for {
+	// 			select {
+	// 			case event := <-eventListenChan:
+	// 				eventCount++
+	// 				clog.Infof("🎉 Event %d detected via subscription! %v", eventCount, event)
+	// 				if eventCount >= 2 { // 期望收到两个事件：Test_sendOut 和 CmHash
+	// 					clog.Infof("✅ All expected events received!")
+	// 					return
+	// 				}
+	// 			case <-timeout:
+	// 				if eventCount > 0 {
+	// 					clog.Infof("⏰ TIMEOUT: Received %d events via subscription after 15 seconds", eventCount)
+	// 				} else {
+	// 					clog.Warnf("⏰ TIMEOUT: No events detected via subscription after 15 seconds")
+	// 				}
+	// 				return
+	// 			}
+	// 		}
+	// 	},
+	// }
+	// // 检查KV命令
+	// kvcmd := &cobra.Command{
+	// 	Use:   "kv set/get <key> [value]",
+	// 	Short: "Set or get a key-value pair in UniversalKVStore contract",
+	// 	Args:  cobra.MinimumNArgs(2),
+	// 	Run: func(cmd *cobra.Command, args []string) {
 
-			yamlConfig := readYAML()
+	// 		yamlConfig := readYAML()
 
-			//连接配置 - 从yamlConfig中读取配置信息
-			privateKey, _ := hex.DecodeString("145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58")
+	// 		//连接配置 - 从yamlConfig中读取配置信息
+	// 		privateKey, _ := hex.DecodeString("145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58")
 
-			// 创建客户端配置对象
-			config := &client.Config{
-				IsSMCrypto:  false,
-				GroupID:     "group0",
-				PrivateKey:  privateKey,
-				Host:        "127.0.0.1",
-				Port:        20200,
-				TLSCaFile:   "./ca.crt",
-				TLSKeyFile:  "./sdk.key",
-				TLSCertFile: "./sdk.crt",
-			}
+	// 		// 创建客户端配置对象
+	// 		config := &client.Config{
+	// 			IsSMCrypto:  false,
+	// 			GroupID:     "group0",
+	// 			PrivateKey:  privateKey,
+	// 			Host:        "127.0.0.1",
+	// 			Port:        20200,
+	// 			TLSCaFile:   "./ca.crt",
+	// 			TLSKeyFile:  "./sdk.key",
+	// 			TLSCertFile: "./sdk.crt",
+	// 		}
 
-			client, err := client.DialContext(context.Background(), config)
-			if err != nil {
-				clog.Fatalf("Failed to connect to FISCO BCOS: %v", err)
-			}
-			clog.Info("Successfully connected to FISCO BCOS")
+	// 		client, err := client.DialContext(context.Background(), config)
+	// 		if err != nil {
+	// 			clog.Fatalf("Failed to connect to FISCO BCOS: %v", err)
+	// 		}
+	// 		clog.Info("Successfully connected to FISCO BCOS")
 
-			// Create app instance to check KV operations
-			appInstance, err := app.NewApp(common.HexToAddress(yamlConfig.Chain.AppAddr), client)
-			if err != nil {
-				clog.Warnf("Failed to create app instance: %v", err)
-			} else {
-				appSession := &app.AppSession{
-					Contract:     appInstance,
-					CallOpts:     *client.GetCallOpts(),
-					TransactOpts: *client.GetTransactOpts(),
-				}
-				key := args[1]
-				if args[0] == "set" && len(args) == 3 {
-					value := args[2]
-					_, receipt, err := appSession.Set(key, value)
-					if err != nil || receipt.Status != 0 {
-						clog.Fatalf("Failed to set KV pair: %v", err)
-					}
-					clog.Infof("✅ Set KV pair: %s = %s", key, value)
-				}
-				// Get the value for the key
-				value, err := appSession.Get(key)
-				if err != nil {
-					clog.Fatalf("Failed to get value for key %s: %v", key, err)
-				}
-				clog.Infof("🔍 Get KV pair: %s = %s", key, value)
+	// 		// Create app instance to check KV operations
+	// 		appInstance, err := app.NewApp(common.HexToAddress(yamlConfig.Chain.AppAddr), client)
+	// 		if err != nil {
+	// 			clog.Warnf("Failed to create app instance: %v", err)
+	// 		} else {
+	// 			appSession := &app.AppSession{
+	// 				Contract:     appInstance,
+	// 				CallOpts:     *client.GetCallOpts(),
+	// 				TransactOpts: *client.GetTransactOpts(),
+	// 			}
+	// 			key := args[1]
+	// 			if args[0] == "set" && len(args) == 3 {
+	// 				value := args[2]
+	// 				_, receipt, err := appSession.Set(key, value)
+	// 				if err != nil || receipt.Status != 0 {
+	// 					clog.Fatalf("Failed to set KV pair: %v", err)
+	// 				}
+	// 				clog.Infof("✅ Set KV pair: %s = %s", key, value)
+	// 			}
+	// 			// Get the value for the key
+	// 			value, err := appSession.Get(key)
+	// 			if err != nil {
+	// 				clog.Fatalf("Failed to get value for key %s: %v", key, err)
+	// 			}
+	// 			clog.Infof("🔍 Get KV pair: %s = %s", key, value)
 
-			}
-		},
-	}
-	rootCmd.AddCommand(kvcmd)
+	// 		}
+	// 	},
+	// }
+	// rootCmd.AddCommand(kvcmd)
 
 	rootCmd.AddCommand(deployCmd)
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(testCmd)
-	rootCmd.AddCommand(debugCmd)
+	//rootCmd.AddCommand(debugCmd)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
