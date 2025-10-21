@@ -23,7 +23,7 @@ var (
 )
 
 // IprivatedatastorageABI is the input ABI used to generate the binding from.
-const IprivatedatastorageABI = "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"dataHash\",\"type\":\"bytes32\"}],\"name\":\"getDataRecord\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
+const IprivatedatastorageABI = "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"dataHash\",\"type\":\"bytes32\"}],\"name\":\"getDataRecord\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"tag\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // Iprivatedatastorage is an auto generated Go binding around a Solidity contract.
 type Iprivatedatastorage struct {
@@ -169,26 +169,36 @@ func (_Iprivatedatastorage *IprivatedatastorageTransactorRaw) TransactWithResult
 
 // GetDataRecord is a free data retrieval call binding the contract method 0x828b6ee3.
 //
-// Solidity: function getDataRecord(bytes32 dataHash) constant returns(bytes)
-func (_Iprivatedatastorage *IprivatedatastorageCaller) GetDataRecord(opts *bind.CallOpts, dataHash [32]byte) ([]byte, error) {
-	var (
-		ret0 = new([]byte)
-	)
-	out := ret0
+// Solidity: function getDataRecord(bytes32 dataHash) constant returns(uint256 value, uint256 tag)
+func (_Iprivatedatastorage *IprivatedatastorageCaller) GetDataRecord(opts *bind.CallOpts, dataHash [32]byte) (struct {
+	Value *big.Int
+	Tag   *big.Int
+}, error) {
+	ret := new(struct {
+		Value *big.Int
+		Tag   *big.Int
+	})
+	out := ret
 	err := _Iprivatedatastorage.contract.Call(opts, out, "getDataRecord", dataHash)
-	return *ret0, err
+	return *ret, err
 }
 
 // GetDataRecord is a free data retrieval call binding the contract method 0x828b6ee3.
 //
-// Solidity: function getDataRecord(bytes32 dataHash) constant returns(bytes)
-func (_Iprivatedatastorage *IprivatedatastorageSession) GetDataRecord(dataHash [32]byte) ([]byte, error) {
+// Solidity: function getDataRecord(bytes32 dataHash) constant returns(uint256 value, uint256 tag)
+func (_Iprivatedatastorage *IprivatedatastorageSession) GetDataRecord(dataHash [32]byte) (struct {
+	Value *big.Int
+	Tag   *big.Int
+}, error) {
 	return _Iprivatedatastorage.Contract.GetDataRecord(&_Iprivatedatastorage.CallOpts, dataHash)
 }
 
 // GetDataRecord is a free data retrieval call binding the contract method 0x828b6ee3.
 //
-// Solidity: function getDataRecord(bytes32 dataHash) constant returns(bytes)
-func (_Iprivatedatastorage *IprivatedatastorageCallerSession) GetDataRecord(dataHash [32]byte) ([]byte, error) {
+// Solidity: function getDataRecord(bytes32 dataHash) constant returns(uint256 value, uint256 tag)
+func (_Iprivatedatastorage *IprivatedatastorageCallerSession) GetDataRecord(dataHash [32]byte) (struct {
+	Value *big.Int
+	Tag   *big.Int
+}, error) {
 	return _Iprivatedatastorage.Contract.GetDataRecord(&_Iprivatedatastorage.CallOpts, dataHash)
 }
