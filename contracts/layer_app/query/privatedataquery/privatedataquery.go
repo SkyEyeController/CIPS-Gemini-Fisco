@@ -24,10 +24,10 @@ var (
 )
 
 // PrivatedataqueryABI is the input ABI used to generate the binding from.
-const PrivatedataqueryABI = "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"storageContract\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"dataHash\",\"type\":\"bytes32\"}],\"name\":\"queryEncryptedData\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"tag\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
+const PrivatedataqueryABI = "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"storageContract\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"key\",\"type\":\"string\"}],\"name\":\"queryEncryptedData\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"tag\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // PrivatedataqueryBin is the compiled bytecode used for deploying new contracts.
-var PrivatedataqueryBin = "0x608060405234801561001057600080fd5b506102cf806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c80637c41bda214610030575b600080fd5b61004a60048036038101906100459190610181565b610061565b6040516100589291906101da565b60405180910390f35b6000808373ffffffffffffffffffffffffffffffffffffffff1663828b6ee3846040518263ffffffff1660e01b815260040161009d9190610212565b6040805180830381865afa1580156100b9573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906100dd9190610259565b915091509250929050565b600080fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000610118826100ed565b9050919050565b6101288161010d565b811461013357600080fd5b50565b6000813590506101458161011f565b92915050565b6000819050919050565b61015e8161014b565b811461016957600080fd5b50565b60008135905061017b81610155565b92915050565b60008060408385031215610198576101976100e8565b5b60006101a685828601610136565b92505060206101b78582860161016c565b9150509250929050565b6000819050919050565b6101d4816101c1565b82525050565b60006040820190506101ef60008301856101cb565b6101fc60208301846101cb565b9392505050565b61020c8161014b565b82525050565b60006020820190506102276000830184610203565b92915050565b610236816101c1565b811461024157600080fd5b50565b6000815190506102538161022d565b92915050565b600080604083850312156102705761026f6100e8565b5b600061027e85828601610244565b925050602061028f85828601610244565b915050925092905056fea2646970667358221220a3eaa9d70749968c76e178d0922679c94bdb281a9ae0ed1a7c3aea9907bbf26b64736f6c634300080b0033"
+var PrivatedataqueryBin = "0x608060405234801561001057600080fd5b5061048a806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c80636ee05a4f14610030575b600080fd5b61004a600480360381019061004591906102a0565b610061565b604051610058929190610315565b60405180910390f35b6000808373ffffffffffffffffffffffffffffffffffffffff166374d2f180846040518263ffffffff1660e01b815260040161009d91906103c6565b6040805180830381865afa1580156100b9573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906100dd9190610414565b915091509250929050565b6000604051905090565b600080fd5b600080fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000610127826100fc565b9050919050565b6101378161011c565b811461014257600080fd5b50565b6000813590506101548161012e565b92915050565b600080fd5b600080fd5b6000601f19601f8301169050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b6101ad82610164565b810181811067ffffffffffffffff821117156101cc576101cb610175565b5b80604052505050565b60006101df6100e8565b90506101eb82826101a4565b919050565b600067ffffffffffffffff82111561020b5761020a610175565b5b61021482610164565b9050602081019050919050565b82818337600083830152505050565b600061024361023e846101f0565b6101d5565b90508281526020810184848401111561025f5761025e61015f565b5b61026a848285610221565b509392505050565b600082601f8301126102875761028661015a565b5b8135610297848260208601610230565b91505092915050565b600080604083850312156102b7576102b66100f2565b5b60006102c585828601610145565b925050602083013567ffffffffffffffff8111156102e6576102e56100f7565b5b6102f285828601610272565b9150509250929050565b6000819050919050565b61030f816102fc565b82525050565b600060408201905061032a6000830185610306565b6103376020830184610306565b9392505050565b600081519050919050565b600082825260208201905092915050565b60005b8381101561037857808201518184015260208101905061035d565b83811115610387576000848401525b50505050565b60006103988261033e565b6103a28185610349565b93506103b281856020860161035a565b6103bb81610164565b840191505092915050565b600060208201905081810360008301526103e0818461038d565b905092915050565b6103f1816102fc565b81146103fc57600080fd5b50565b60008151905061040e816103e8565b92915050565b6000806040838503121561042b5761042a6100f2565b5b6000610439858286016103ff565b925050602061044a858286016103ff565b915050925092905056fea2646970667358221220edc622e37763ae66ab0820a80b91fa83fdb0d959c3c71d0d4bc2ce393e54a47e64736f6c634300080b0033"
 var PrivatedataquerySMBin = "0x"
 
 // DeployPrivatedataquery deploys a new contract, binding an instance of Privatedataquery to it.
@@ -217,10 +217,10 @@ func (_Privatedataquery *PrivatedataqueryTransactorRaw) TransactWithResult(opts 
 	return _Privatedataquery.Contract.contract.TransactWithResult(opts, result, method, params...)
 }
 
-// QueryEncryptedData is a free data retrieval call binding the contract method 0x7c41bda2.
+// QueryEncryptedData is a free data retrieval call binding the contract method 0x6ee05a4f.
 //
-// Solidity: function queryEncryptedData(address storageContract, bytes32 dataHash) constant returns(uint256 value, uint256 tag)
-func (_Privatedataquery *PrivatedataqueryCaller) QueryEncryptedData(opts *bind.CallOpts, storageContract common.Address, dataHash [32]byte) (struct {
+// Solidity: function queryEncryptedData(address storageContract, string key) constant returns(uint256 value, uint256 tag)
+func (_Privatedataquery *PrivatedataqueryCaller) QueryEncryptedData(opts *bind.CallOpts, storageContract common.Address, key string) (struct {
 	Value *big.Int
 	Tag   *big.Int
 }, error) {
@@ -229,26 +229,26 @@ func (_Privatedataquery *PrivatedataqueryCaller) QueryEncryptedData(opts *bind.C
 		Tag   *big.Int
 	})
 	out := ret
-	err := _Privatedataquery.contract.Call(opts, out, "queryEncryptedData", storageContract, dataHash)
+	err := _Privatedataquery.contract.Call(opts, out, "queryEncryptedData", storageContract, key)
 	return *ret, err
 }
 
-// QueryEncryptedData is a free data retrieval call binding the contract method 0x7c41bda2.
+// QueryEncryptedData is a free data retrieval call binding the contract method 0x6ee05a4f.
 //
-// Solidity: function queryEncryptedData(address storageContract, bytes32 dataHash) constant returns(uint256 value, uint256 tag)
-func (_Privatedataquery *PrivatedataquerySession) QueryEncryptedData(storageContract common.Address, dataHash [32]byte) (struct {
+// Solidity: function queryEncryptedData(address storageContract, string key) constant returns(uint256 value, uint256 tag)
+func (_Privatedataquery *PrivatedataquerySession) QueryEncryptedData(storageContract common.Address, key string) (struct {
 	Value *big.Int
 	Tag   *big.Int
 }, error) {
-	return _Privatedataquery.Contract.QueryEncryptedData(&_Privatedataquery.CallOpts, storageContract, dataHash)
+	return _Privatedataquery.Contract.QueryEncryptedData(&_Privatedataquery.CallOpts, storageContract, key)
 }
 
-// QueryEncryptedData is a free data retrieval call binding the contract method 0x7c41bda2.
+// QueryEncryptedData is a free data retrieval call binding the contract method 0x6ee05a4f.
 //
-// Solidity: function queryEncryptedData(address storageContract, bytes32 dataHash) constant returns(uint256 value, uint256 tag)
-func (_Privatedataquery *PrivatedataqueryCallerSession) QueryEncryptedData(storageContract common.Address, dataHash [32]byte) (struct {
+// Solidity: function queryEncryptedData(address storageContract, string key) constant returns(uint256 value, uint256 tag)
+func (_Privatedataquery *PrivatedataqueryCallerSession) QueryEncryptedData(storageContract common.Address, key string) (struct {
 	Value *big.Int
 	Tag   *big.Int
 }, error) {
-	return _Privatedataquery.Contract.QueryEncryptedData(&_Privatedataquery.CallOpts, storageContract, dataHash)
+	return _Privatedataquery.Contract.QueryEncryptedData(&_Privatedataquery.CallOpts, storageContract, key)
 }
