@@ -1,11 +1,11 @@
 chain:
-  chain_id: 14
+  chain_id: 911
   hostname: http://127.0.0.1:8545
   sender_address: hHu9yEnSNpHKyAGW7S4wBsaGDaNL74kbw6xTKDStEJzzgo9sv
   private_key: 145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58
-  transport_addr: 0x2b5DCbaE97f9d9178E8b051b08c9Fb4089BAE71b
-  aggregator_addr: 0xaCE9eb31C30d607E91214b8C540D73F276D63656
-  app_addr: 0x745D4de0cf93b7d1Db8dD8892Daf05aC745766CE
+  transport_addr: 0x326bDeEC6fDE54287c59f24C5f0d8722397bC087
+  aggregator_addr: 0x6B1EA6f58b05278b87024196408F27DCd7a27Fa5
+  app_addr: 0x15CcE577986284bFC4dCBB3A0B8231e79860EC41
 relayer:
   server: http://127.0.0.1:6000
   enable_relaychain: false
@@ -15,12 +15,18 @@ relayer:
   - id: 2
     args: ""
   targets:
+  - chain_id: 16002
+    url: http://124.70.74.128:8091
   - chain_id: 911
-    url: http://110.239.84.82:6000
-  - chain_id: 14
     url: http://127.0.0.1:6000
 test:
-  dst_chain_id: 911
+  dst_chain_id: 16002
   src_app_id: 1
   dst_app_id: 1
-  app_args: '["storage-normal","setData","luanboyue","123"]'
+  # app_args: '["DataStorage","setData","luanboyue","123"]'
+  # app_args: '["DataStorage","getData","luanboyue"]'
+  # app_args: '["EnhancedDataStorage","setEncryptedData","H2C","530865"]'
+  # app_args: '["EnhancedDataStorage","getDataRecord","H2C"]'
+  # app_args: '["DataQuery","getValue","0xE5051c91d4EdE00310eEFdC4e7Fbf88DF5d8EceD","luanboyue"]'
+  # app_args: '["PrivateDataQuery","queryEncryptedData","0x2462CeDEE021d2F6641fADA9cce96b97E7372521","H2C"]'
+  app_args: '["HomomorphicCalculator","homomorphicAdd","19389423366847802182809691477929196065","31212745719004170241329218874872078640"]'
