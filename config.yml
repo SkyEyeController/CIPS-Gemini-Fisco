@@ -3,9 +3,9 @@ chain:
   hostname: http://127.0.0.1:8545
   sender_address: hHu9yEnSNpHKyAGW7S4wBsaGDaNL74kbw6xTKDStEJzzgo9sv
   private_key: 145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58
-  transport_addr: 0x2A5D9048a2734AfDaFec23926636d30959258C86
-  aggregator_addr: 0x50d9E7298bC6267FAD9B81C2933C9a0E65A48990
-  app_addr: 0x86a3f4Fbde9d83312970dc7791d74665Fd610cfb
+  transport_addr: 0x2b5DCbaE97f9d9178E8b051b08c9Fb4089BAE71b
+  aggregator_addr: 0xaCE9eb31C30d607E91214b8C540D73F276D63656
+  app_addr: 0x745D4de0cf93b7d1Db8dD8892Daf05aC745766CE
 relayer:
   server: http://127.0.0.1:6000
   enable_relaychain: false
