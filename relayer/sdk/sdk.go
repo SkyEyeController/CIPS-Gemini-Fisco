@@ -263,11 +263,14 @@ func (c *ChainSdk) ReceiveMsg(args_cm utils.CrossChainMessage, args_proof []byte
 
 	if receipt.Status != 0 {
 		clog.Infof("ReceiveMsg transaction failed with status: %d", receipt.Status)
+		clog.Logf("ReceiveMsg transaction failed: %+v", receipt)
+		//打印详细的错误日志
 		return ""
 	}
 
 	txid := receipt.TransactionHash
 	clog.Infof("ReceiveMsg successful, txid: %s", txid)
+	clog.Logf("ReceiveMsg transaction failed: %+v", receipt)
 	return txid
 }
 

@@ -116,6 +116,7 @@ func (v *Verification) watch_q_resp_tspt_vrfy() {
 	for {
 		cm := <-v.q_resp_tspt_vrfy
 		clog.Debugf("%v: watch_q_resp_tspt_vrfy: get cm from q_resp_tspt_vrfy", v.Chainid)
+		clog.Logf("%v: watch_q_resp_tspt_vrfy: cm.payloadResp: %v", v.Chainid, cm.PayloadResp)
 
 		vrfy_id := cm.VerificationTypeId
 		if verification, ok := v.verification_protocols[vrfy_id.String()]; ok {

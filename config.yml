@@ -3,9 +3,9 @@ chain:
   hostname: http://127.0.0.1:8545
   sender_address: hHu9yEnSNpHKyAGW7S4wBsaGDaNL74kbw6xTKDStEJzzgo9sv
   private_key: 145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58
-  transport_addr: 0x4DD99782754E0bfD33DCB100B9803a728b7Ad689
-  aggregator_addr: 0x762A58e444EC5A88a35D1F508a689e8AA3bc6F23
-  app_addr: 0xc440638982118c718AC3304cD96fe779383ABd34
+  transport_addr: 0x2A5D9048a2734AfDaFec23926636d30959258C86
+  aggregator_addr: 0x50d9E7298bC6267FAD9B81C2933C9a0E65A48990
+  app_addr: 0x86a3f4Fbde9d83312970dc7791d74665Fd610cfb
 relayer:
   server: http://127.0.0.1:6000
   enable_relaychain: false
@@ -16,11 +16,11 @@ relayer:
     args: ""
   targets:
   - chain_id: 911
-    url: http://101.46.70.132:6000
+    url: http://110.239.84.82:6000
   - chain_id: 14
     url: http://127.0.0.1:6000
 test:
   dst_chain_id: 911
   src_app_id: 1
   dst_app_id: 1
-  app_args: '["kv-cross","set","luanboyue","hello world for the testing sys"]'
+  app_args: '["storage-normal","setData","luanboyue","123"]'

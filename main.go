@@ -375,6 +375,36 @@ func main() {
 			clog.Infof("TransportContract Addr = %s", eventListenAddress.Hex())
 			clog.Infof("AggregatorContract Addr = %s", aggregatorAddress.Hex())
 			clog.Infof("AppContract Addr = %s", appImplAddress.Hex())
+			clog.Infof("Other Apps :")
+			// 新增：读取并打印 constructor 内注册的各合约地址
+			if appInstance, err := app.NewApp(appImplAddress, client); err != nil {
+				clog.Warnf("Create App instance failed: %v", err)
+			} else {
+				appSession := &app.AppSession{
+					Contract:     appInstance,
+					CallOpts:     *client.GetCallOpts(),
+					TransactOpts: *client.GetTransactOpts(),
+				}
+				names := []string{
+					"kv-cross",
+					"DataStorage",
+					"EnhancedDataStorage",
+					"DataQuery",
+					"PrivateDataQuery",
+					"Calculator",
+					"HomomorphicCalculator",
+				}
+				clog.Info("🔍 Constructor-registered contract addresses:")
+				for _, n := range names {
+					addr, err := appSession.GetContractAddress(n)
+					if err != nil {
+						clog.Warnf("  %s => <read error: %v>", n, err)
+					} else {
+						clog.Infof("  %s => %s", n, addr.Hex())
+					}
+				}
+			}
+
 			//clog.Infof("UniversalKVStore Addr = %s", kvStoreAddress.Hex())
 			// 将合约地址写入配置文件
 			yamlConfig.Chain.TransportAddr = eventListenAddress.Hex()
