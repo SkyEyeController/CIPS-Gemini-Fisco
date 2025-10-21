@@ -233,9 +233,11 @@ func (c *ChainSdk) ListenEvent(eventListenChan chan map[string][]byte) {
 func (c *ChainSdk) ReceiveMsg(args_cm utils.CrossChainMessage, args_proof []byte) string {
 	data := args_cm
 	client := c.client
+	clog.Logf("cm.PayloadReq before op: %v", strings.Trim(string(data.PayloadReq[0]), "\x00"))
 
 	// 将CrossChainMessage转换为合约需要的字节列表格式
 	cmBytes := utils.CmToLb(data)
+	clog.Logf("cmBytes.PayloadReq: %v", cmBytes)
 
 	// 创建聚合器合约实例
 	aggregatorInstance, err := contract_aggregator.NewContractAggregator(
@@ -261,11 +263,14 @@ func (c *ChainSdk) ReceiveMsg(args_cm utils.CrossChainMessage, args_proof []byte
 
 	if receipt.Status != 0 {
 		clog.Infof("ReceiveMsg transaction failed with status: %d", receipt.Status)
+		clog.Logf("ReceiveMsg transaction failed: %+v", receipt)
+		//打印详细的错误日志
 		return ""
 	}
 
 	txid := receipt.TransactionHash
 	clog.Infof("ReceiveMsg successful, txid: %s", txid)
+	clog.Logf("ReceiveMsg transaction failed: %+v", receipt)
 	return txid
 }
 
@@ -336,6 +341,8 @@ func (c *ChainSdk) QueryReqCmByHash(cmhash [32]byte) [][]byte {
 		clog.Infof("Failed to query req cm by hash: %v", err)
 		return nil
 	}
+
+	clog.Logf("QueryReqCmByHash result: %+v", result.PayloadReq)
 
 	// 将 TypesCrosschainMessage 转换为 [][]byte
 	return utils.CmToLb(utils.CrossChainMessage{

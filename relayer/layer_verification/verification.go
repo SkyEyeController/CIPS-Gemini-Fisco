@@ -68,6 +68,7 @@ func (v *Verification) watch_q_req_tspt_vrfy() {
 	for {
 		cm := <-v.q_req_tspt_vrfy
 		clog.Debugf("%v: watch_q_req_tspt_vrfy: get cm from q_req_tspt_vrfy", v.Chainid)
+		clog.Logf("%v: watch_q_req_tspt_vrfy: cm.payloadReq: %v", v.Chainid, cm)
 
 		vrfy_id := cm.VerificationTypeId
 		if verification, ok := v.verification_protocols[vrfy_id.String()]; ok {
@@ -77,6 +78,7 @@ func (v *Verification) watch_q_req_tspt_vrfy() {
 				Cm:    cm,
 				Proof: proof,
 			}
+			clog.Logf("%v: cm.payloadReq after proof: %v", v.Chainid, cm.PayloadReq)
 			clog.Debugf("%v: watch_q_req_tspt_vrfy: send cm with proof to q_req_vrfy_tspt", v.Chainid)
 		} else {
 			clog.Warnf("%v: vrfy_id %v is invalid", v.Chainid, vrfy_id)
@@ -88,6 +90,7 @@ func (v *Verification) watch_q_req_pre_tspt_vrfy() {
 	for {
 		item := <-v.q_req_pre_tspt_vrfy
 		clog.Debugf("%v: watch_q_req_pre_tspt_vrfy: get cm with proof from q_req_pre_tspt_vrfy", v.Chainid)
+		clog.Logf("%v: watch_q_req_pre_tspt_vrfy: item.cm.payloadReq: %v", v.Chainid, item.Cm.PayloadReq)
 
 		cm := item.Cm
 		proof := item.Proof
@@ -113,6 +116,7 @@ func (v *Verification) watch_q_resp_tspt_vrfy() {
 	for {
 		cm := <-v.q_resp_tspt_vrfy
 		clog.Debugf("%v: watch_q_resp_tspt_vrfy: get cm from q_resp_tspt_vrfy", v.Chainid)
+		clog.Logf("%v: watch_q_resp_tspt_vrfy: cm.payloadResp: %v", v.Chainid, cm.PayloadResp)
 
 		vrfy_id := cm.VerificationTypeId
 		if verification, ok := v.verification_protocols[vrfy_id.String()]; ok {

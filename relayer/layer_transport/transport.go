@@ -103,8 +103,10 @@ func NewGatewayApiClient(server_url string) *GatewayApiClient {
 // 向目的链网关发送原链的请求消息
 // 包含跨链消息和证明
 func (gc *GatewayApiClient) SendReqCm(cm *utils.CrossChainMessage, proof []byte) ([]byte, string) {
+	clog.Logf("cm.PayloadReq: %v", strings.Trim(string(cm.PayloadReq[0]), "\x00"))
 	gwData := NewGatewayData(utils.CmToLb(*cm), proof)
 	gwDataEncoded := gwData.Encode()
+	clog.Logf("gwDataEncoded: %v", strings.Trim(string(gwDataEncoded), "\x00"))
 
 	path := "/cm/req"
 	response, err := http.Post(gc.relay_client.GetURL()+path, "application/json", bytes.NewBuffer(gwDataEncoded))
@@ -240,7 +242,7 @@ func NewGatewayApiServer(url string, transport *Transport) *GatewayApiServer {
 		cm := utils.CmFromLb(gwData.Message)
 		proof := gwData.Proof
 		clog.Debugf("%v: cmreq handler get request from /cm/req", transport.chainid)
-
+		clog.Logf("%v: cmreq handler cm.payloadReq: %v", transport.chainid, cm.PayloadReq)
 		// 将返回值接入 response 中
 		if transport.ReceivceReqCmFromOthers(&cm, proof) {
 			// 写入 http.ResponseWriter
@@ -626,7 +628,7 @@ func (t *Transport) SendReqToTargetChain() {
 		// 错误处理, 假设上级协议执行失败, 那么如何响应错误
 		item := <-t.q_req_pre_vrfy_tspt
 		clog.Debugf("%v: SendReqToTargetChain: get cm with proof from q_req_pre_vrfy_tspt", t.chainid)
-
+		clog.Logf("%v: SendReqToTargetChain: cm.PayloadReq: %v", t.chainid, string(item.Cm.PayloadReq[0]))
 		cm := item.Cm
 		proof := item.Proof
 
