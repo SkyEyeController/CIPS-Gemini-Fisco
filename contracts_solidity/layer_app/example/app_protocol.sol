@@ -141,7 +141,7 @@ contract App is IApp {
     ) private returns (bytes memory) {
         bytes32 nameHash = keccak256(bytes(contractName));
 
-        if (nameHash == keccak256(bytes("kv-cross"))) {
+        if (nameHash == keccak256(bytes("UniversalKVStore"))) {
             return routeKVCrossCall(functionName, params);
         }
 
@@ -149,7 +149,7 @@ contract App is IApp {
         if (nameHash == keccak256(bytes("DataStorage"))) {
             return routeStorageNormalCall(target, functionName, params);
         }
-        if (nameHash == keccak256(bytes("EnhancedDataStorage"))) {
+        if (nameHash == keccak256(bytes("PrivateDataStorage"))) {
             return routeStorageEncrptCall(target, functionName, params);
         }
 
